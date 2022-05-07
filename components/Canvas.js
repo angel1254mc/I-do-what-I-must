@@ -1,5 +1,4 @@
 import { app, database } from '../firebaseConfig';
-import Document from 'next/document';
 import {Voxel, Box, buildGameWorld, startGame} from '../pages/api/game'
 import React from 'react';
 import { isReactNative } from '@firebase/util';
