@@ -7,7 +7,6 @@ import Canvas from '../components/Canvas';
 import Nav from '../components/Nav';
 import BackgroundCanvas from '../components/BackgroundCanvas';
 export default function Home() {
-  
   const [startGame, setStartGame] = React.useState(false);
   const [lostGame, setLostGame] = React.useState(false);
   const [wonGame, setWonGame] = React.useState(false)
@@ -56,7 +55,8 @@ export default function Home() {
         {startGame ? <div className = "absolute flex p-4 text-center justify-center items-center width-[50px] text-3xl h-[50px] text-white">{gameScore}</div> : 'no'}
         {startGame ? <Canvas gameOn = {startGame} gameOnHandler = {setStartGame} lostGame ={lostGame} setLostGame = {setLostGame} gameType = {gameType} wonGame = {wonGame} setWonGame = {setWonGame} gameScore = {gameScore} setGameScore = {setGameScore}></Canvas> 
         : <BackgroundCanvas startGame = {startGame} restartGame={retry} ></BackgroundCanvas>}
-
+        <Image id="rocket" className ="absolute" width="0px" height="0px" src="/static/rocket.png" priority></Image>
+        <Image id="spring" className ="absolute" width="0px" height="0px" src="/static/spring.png" priority></Image>
         </div>
       </main>
     </div>

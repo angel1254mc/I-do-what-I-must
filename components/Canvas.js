@@ -15,7 +15,21 @@ let interval;
 let spring;
 let rocket; 
 
-
+const getRandImageType = () => {
+  let rand = getRandomBetween(1, 100);
+  if (rand < 5)
+    return {image: rocket,
+            typeString: "rocket",
+            multiplier: 2.5};
+  else if (rand < 20)
+    return {image: spring,
+            typeString: "spring",
+            multiplier: 1.5};
+  else
+    return {image: null,
+            typeString: null,
+            multiplier: 1};
+}
 const updateScore = (voxel) => {
     
     voxel.score += Math.round(Math.ceil(-voxel.vy)/10 );
@@ -35,6 +49,8 @@ const scaleMap = (voxel, boxes) => {
     createManyPlatforms(boxes, 300, -map.height/2 -200, 0);
     boxes.map((box, index) => {
       box.y = box.y + map.height/2-600;
+      if (box.item)
+        box.item.y = box.item.y + map.height/2-600;
       box.collisionzone = {
         left: box.x,
         right: box.x + box.xsize,
@@ -107,12 +123,14 @@ const buildGameWorld = () => {
   
   const clamp = (n, lo, hi) => n < lo ? lo : n > hi ? hi : n;
 
-const Item = function (x, y, size, image, map, type) {
+const Item = function (x, y, size, image, map, type,multiplier) {
     this.x = x;
     this.y = y;
     this.xsize = size;
     this.ysize = size;
     this.image = image;
+    this.type = type;
+    this.multiplier = multiplier;
     this.collisionzone = {
       right: this.x+ this.xsize,
       left: this.x,
@@ -124,7 +142,9 @@ const Item = function (x, y, size, image, map, type) {
 Item.prototype = {
   draw: function (ctx, viewportX, viewportY) {
     ctx.save();
-    ctx.translate(this.x + viewportX, this.y + viewportY);;
+    console.log(this.type);
+    ctx.translate(this.x + viewportX, this.y + viewportY);
+    ctx.drawImage(this.image,0,0,this.xsize, this.ysize);
     ctx.restore();
   },
 
@@ -165,10 +185,10 @@ const Voxel = function (x, y, angle, size, color, map) {
     accelerate: function (direction) {
       this.ax += this.accelerationAmount * direction;
     },
-    bounce: function () {
+    bounce: function (multiplier) {
       if (this.vy > 0)
       {
-        this.vy = -10.8;
+        this.vy = multiplier*-10.8;
       }
     },
     move: function () {
@@ -198,7 +218,7 @@ const Voxel = function (x, y, angle, size, color, map) {
       let voxelcollision = this.stepcollisionzone;
       if (voxelcollision.left < boxcollision.right && voxelcollision.right > boxcollision.left && voxelcollision.top < boxcollision.top && boxcollision.bottom < voxelcollision.bottom && this.vy > 0)
       { 
-        this.bounce();
+        this.bounce(box.multiplier);
       }
     },
     
@@ -230,6 +250,9 @@ const Voxel = function (x, y, angle, size, color, map) {
     this.y = y;
     this.xsize = size;
     this.ysize = size/2;
+    var itemType = getRandImageType();
+    this.multiplier = itemType.multiplier;
+    (itemType.typeString) ? this.item = new Item(this.x-25, this.y-50, 50, itemType.image,map, itemType.typeString, this.multiplier) : this.item = null
     this.collisionzone = {
       right: this.x+ this.xsize,
       left: this.x,
@@ -259,6 +282,8 @@ const Voxel = function (x, y, angle, size, color, map) {
         this.ysize
       );
       ctx.restore();
+      if (this.item)
+        this.item.draw(ctx, viewportX, viewportY);
     },
   }
 
@@ -386,12 +411,9 @@ const Voxel = function (x, y, angle, size, color, map) {
   };
 
   React.useEffect(() => {
-    spring = new Image();
-    rocket = new Image();
-    spring.onload = console.log("spring loaded");
-    rocket.onload = console.log("rocket loaded");
-    spring.src="../public/spring.png";
-    rocket.src="../public/rocket.png";
+    
+    spring = document.getElementById("spring");
+    rocket = document.getElementById("rocket");
     if (gameOn == 1)
     {
       buildGameWorld();
@@ -401,8 +423,8 @@ const Voxel = function (x, y, angle, size, color, map) {
     },[restartGame])
   React.useEffect(() => {
     
-    spring = new Image().src="../public/spring.png"
-    rocket = new Image().src="../public/rocket.png"
+    spring = document.getElementById("spring");
+    rocket = document.getElementById("rocket");
     if (gameType == "Race")
     {
       interval = setInterval(() => {
