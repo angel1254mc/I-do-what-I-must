@@ -5,15 +5,49 @@ import React from 'react';
 import { isReactNative } from '@firebase/util';
 
 
-let Canvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartGame, gameType, wonGame, setWonGame}) => {
+let Canvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartGame, gameType, wonGame, setWonGame, startTimer, gameScore, setGameScore}) => {
     //Game Functionality holders, later passed to game API
 let canvas = 1;
 let map = 1;
 let ctx = 1;
 let ref;
-const scaleMap = () => {
+let interval;
+let spring;
+let rocket; 
 
+
+const updateScore = (voxel) => {
+    
+    voxel.score += Math.round(Math.ceil(-voxel.vy)/10 );
+    console.log(voxel.score);
+    if (voxel.score > gameScore + 20)
+      setGameScore(voxel.score);
 }
+const scaleMap = (voxel, boxes) => {
+    voxel.y = voxel.y  + map.height/2-600;
+    voxel.miny =  voxel.miny + map.height/2-600;
+    voxel.stepcollisionzone = {
+      left: voxel.x,
+      right: voxel.x + voxel.size,
+      top: voxel.y + voxel.size/2,
+      bottom: voxel.y + voxel.size
+    }
+    createManyPlatforms(boxes, 300, -map.height/2 -200, 0);
+    boxes.map((box, index) => {
+      box.y = box.y + map.height/2-600;
+      box.collisionzone = {
+        left: box.x,
+        right: box.x + box.xsize,
+        top: box.y,
+        bottom: box.y + box.ysize/4
+      }
+      if (box.y > voxel.height-200 || box.y < 0)
+      {
+        boxes.splice(index, 1);
+      }
+      
+    });
+  }
 const buildGameWorld = () => {
     let prevCanvas = document.getElementsByTagName("canvas")[0];
     if (prevCanvas)
@@ -49,25 +83,55 @@ const buildGameWorld = () => {
   const createRandomPlatform = (prevBox, limits, type) => {
     if (type === 1) 
     {
-      (!prevBox) ? prevBox = {x: 0, y: 0} : "nice";
       let randlocale = {
-        y: getRandomBetween(prevBox.y + 100, prevBox.y + 400),
+        y: getRandomBetween(prevBox.y + 100, prevBox.y + 200),
         x: getRandomBetween(0, canvas.width)
       };
       return new Box(randlocale.x, randlocale.y, canvas.width/10, "red", map);
     }
   }
-  const createManyPlatforms = (arr, num) => {
+  const createManyPlatforms = (arr, num, start, end) => {
     let prevBox = null;
     let i = 0;
+    let fakeBox = {x: 0, y:start}
     for (i = 0; i < num; i++)
     {
-      (!prevBox) ? prevBox = createRandomPlatform(prevBox, 0, 1) : prevBox = (createRandomPlatform(prevBox, 0, 1))
-      arr.push(prevBox)
+      (!prevBox) ? prevBox = createRandomPlatform(fakeBox, 0, 1) : prevBox = (createRandomPlatform(prevBox, 0, 1))
+      if (prevBox.y > end)
+      {
+        break;
+      }
+      arr.push(prevBox);
     }
   }
   
   const clamp = (n, lo, hi) => n < lo ? lo : n > hi ? hi : n;
+
+const Item = function (x, y, size, image, map, type) {
+    this.x = x;
+    this.y = y;
+    this.xsize = size;
+    this.ysize = size;
+    this.image = image;
+    this.collisionzone = {
+      right: this.x+ this.xsize,
+      left: this.x,
+      top: this.y,
+      bottom: this.y + this.ysize,
+    };
+};
+
+Item.prototype = {
+  draw: function (ctx, viewportX, viewportY) {
+    ctx.save();
+    ctx.translate(this.x + viewportX, this.y + viewportY);;
+    ctx.restore();
+  },
+
+  specialFunction: function(voxel) {
+    console.log("Does nothing right now!");
+  }
+}
 
 
 const Voxel = function (x, y, angle, size, color, map) {
@@ -89,6 +153,7 @@ const Voxel = function (x, y, angle, size, color, map) {
     this.radius = size;
     this.color = color;
     this.map = map;
+    this.score = 0;
     this.stepcollisionzone =  {
       left: this.x,
       right: this.x + this.size,
@@ -103,7 +168,7 @@ const Voxel = function (x, y, angle, size, color, map) {
     bounce: function () {
       if (this.vy > 0)
       {
-        this.vy = -30.8;
+        this.vy = -10.8;
       }
     },
     move: function () {
@@ -131,7 +196,7 @@ const Voxel = function (x, y, angle, size, color, map) {
     step: function (box) {
       let boxcollision = box.collisionzone;
       let voxelcollision = this.stepcollisionzone;
-      if (voxelcollision.left < boxcollision.right && voxelcollision.right > boxcollision.left && voxelcollision.top < boxcollision.top && boxcollision.bottom < voxelcollision.bottom)
+      if (voxelcollision.left < boxcollision.right && voxelcollision.right > boxcollision.left && voxelcollision.top < boxcollision.top && boxcollision.bottom < voxelcollision.bottom && this.vy > 0)
       { 
         this.bounce();
       }
@@ -213,7 +278,7 @@ const Voxel = function (x, y, angle, size, color, map) {
       map
     );
     const boxes = new Array();
-    createManyPlatforms(boxes, 100);
+    createManyPlatforms(boxes, 200, 0, map.height);
     createFloorPlatforms(boxes);
     
     const keyCodesToActions = {
@@ -251,9 +316,17 @@ const Voxel = function (x, y, angle, size, color, map) {
         
         stopGame(ref)
         setLostGame(true);
+        interval ? clearInterval(interval) : interval = 1;
       }
       //Conditionals that implement game type functionality
-    
+      if (gameType == "Infinite")
+      {
+        updateScore(voxel);
+        if (voxel.y < map.height/2)
+        {
+          scaleMap(voxel, boxes);
+        }
+      }
     
       boxes.forEach((box) => {
         voxel.step(box);
@@ -277,12 +350,9 @@ const Voxel = function (x, y, angle, size, color, map) {
           {
             stopGame(ref);
             setWonGame(true);
+            clearInterval(interval);
           }
         }
-      }
-      else if (gameType === "Infinite");
-      {
-
       }
       /* draw everything offset by viewportX/Y */
       const tileSize = canvas.width / 5;
@@ -316,6 +386,12 @@ const Voxel = function (x, y, angle, size, color, map) {
   };
 
   React.useEffect(() => {
+    spring = new Image();
+    rocket = new Image();
+    spring.onload = console.log("spring loaded");
+    rocket.onload = console.log("rocket loaded");
+    spring.src="../public/spring.png";
+    rocket.src="../public/rocket.png";
     if (gameOn == 1)
     {
       buildGameWorld();
@@ -324,25 +400,22 @@ const Voxel = function (x, y, angle, size, color, map) {
     }
     },[restartGame])
   React.useEffect(() => {
-    console.log("Has the player lost the game?: ", lostGame);
-  },[lostGame])
+    
+    spring = new Image().src="../public/spring.png"
+    rocket = new Image().src="../public/rocket.png"
+    if (gameType == "Race")
+    {
+      interval = setInterval(() => {
+        setGameScore(gameScore => gameScore + 1)
+      }, 1000);
   
-  /**
-   * (this.x - this.size < 0) ? this.x = 0 + this.size
-      : (this.x + this.size > this.map.width) ? this.x = this.map.width-this.size 
-      : this.x += this.vx * Math.cos(this.angle)
-      console.log(this.x);
-      console.log(this.size);
-      this.y += this.vy * Math.sin(this.angle);
-      this.map.height - this.y > this.maxy ? this.maxy = this.y
-      : this.y = this.y;
-   */
-
-
+      return () => clearInterval(interval);
+    }
+  },[]);
 
 
     return (
-      <div>
+      <div className = "w-[400px] h-[800px]">
         <div id= "canvas-holder-game">
         </div>
       </div>
