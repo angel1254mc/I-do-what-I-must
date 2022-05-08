@@ -449,10 +449,11 @@ let connected = (socket) => {
     })
   })
 }
-const async SocketHandler = (req, res) => {
+const SocketHandler = (req, res) => {
   if (!res.socket.server.io) {
     console.log("*First use, so starting server");
     io = new Server(res.socket.server);
+    res.socket.server.io = io;
   }
 
   //let selfID = "id of the emitting client";
@@ -472,7 +473,7 @@ const async SocketHandler = (req, res) => {
   }
   //60 frames per second's worth of info being delivered to client
   server_loop = setInterval(serverLoop, 1000/60);
-
+  res.end();
   
 }
 

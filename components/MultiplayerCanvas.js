@@ -148,6 +148,7 @@ useEffect(( )=> {
         socket.on('positionUpdate', players => {
             for (let id in players)
             {
+                let voxel = voxels[id];
                 if (!voxels[id])
                     voxels[id] = new SimpleVoxel(voxel.x, voxel.y, voxel.id, voxel.viewportY);
                 if (id == ID)
