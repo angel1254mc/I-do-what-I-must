@@ -1,5 +1,4 @@
 import { app, database } from '../firebaseConfig';
-import {Voxel, Box, buildGameWorld, startGame} from '../pages/api/game'
 import React from 'react';
 import { isReactNative } from '@firebase/util';
 
@@ -32,7 +31,6 @@ const getRandImageType = () => {
 const updateScore = (voxel) => {
     
     voxel.score += Math.round(Math.ceil(-voxel.vy)/10 );
-    console.log(voxel.score);
     if (voxel.score > gameScore + 20)
       setGameScore(voxel.score);
 }
@@ -415,13 +413,13 @@ const Voxel = function (x, y, angle, size, color, map) {
     rocket = document.getElementById("rocket");
     if (gameOn == 1)
     {
+      setGameScore(0);
       buildGameWorld();
       startGame();
       setLostGame(false);
     }
     },[restartGame])
   React.useEffect(() => {
-    
     spring = document.getElementById("spring");
     rocket = document.getElementById("rocket");
     if (gameType == "Race")
