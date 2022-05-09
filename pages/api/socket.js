@@ -48,22 +48,22 @@ const createFloorPlatforms = (arr) => {
   }
 }
 const Voxel = function (x, y, angle, size, color, map, canvas, id) {
-    this.id
+    this.id =id;
     this.x = x;
     this.y = y;
     this.canvas = canvas;
     this.maxy = this.y + canvas.height/2 + this.size/2;
     this.miny = y;
     this.viewportY = 0
-    this.updateViewport();
+    this.viewportY = clamp(canvas.height / 3.8 - this.y, canvas.height/2 -(this.miny -10), canvas.height / 2-this.y);
     this.vx = 0;
     this.vy = 0;
     this.ax = 0;
-    this.ay = 0;
+    this.ay = 0.1*10;
     this.rv = 0;
     this.angle = angle;
     this.accelerationAmount = 0.05;
-    this.decelerationAmount = 0.02;
+    this.decelerationAmount = 20*0.02;
     this.friction = 0.9;
     this.rotationSpd = 0.01;
     this.size = size;
@@ -89,7 +89,7 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
     bounce: function (multiplier) {
       if (this.vy > 0)
       {
-        this.vy = multiplier*-10.8;
+        this.vy = 2.5*multiplier*-10.8;
       }
     },
     move: function () {
@@ -106,7 +106,6 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
       //Modifying Maxy for dying purposes
       this.maxy = this.miny + canvas.height/2
       this.ax *= this.friction;
-      this.ay = 0.1;
       this.vx *= this.friction;
       //Updating the collision zone for the voxel bouncing on blocks/platforms
       this.stepcollisionzone =  {
@@ -115,6 +114,7 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
         top: this.y,
         bottom: this.y + this.size
       };
+      this.viewportY = clamp(canvas.height / 3.8 - this.y, canvas.height/2 -(this.miny -10), canvas.height / 2-this.y);
     },
     /**
      * Allows the voxel to step over the box, increasing its velocity based on the box's multiplier
@@ -172,8 +172,8 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
   const Box = function (x, y, size, color, map) {
     this.x = x;
     this.y = y;
-    this.xsize = size;
-    this.ysize = size/2;
+    this.xsize = canvas.width/10;
+    this.ysize = canvas.width/10/2;
     //Handles generating an item for the box/platform
     var itemType = this.getRandImageType();
     this.multiplier = itemType.multiplier;
@@ -392,7 +392,7 @@ let viewportX = 0;
   let gameOver = false;
   let canvas = {
     height: 800,
-    width: 400,
+    width: 600,
   }
   let map = {
     height: canvas.height * 20, 
@@ -402,17 +402,28 @@ let viewportX = 0;
   let PLAYERS = [];
   let server_loop;
   let MAPENTITIES =[];
+  const serverLoop = () => {
+    //  User Interaction
+    userInputs();
+    //  Calculate Physics
+    calcPhysics();
+    //  Game Logic
+    gameLogic();
+    //  render or send render info to player
+    sendRender();
+  }
 
 let connected = (socket) => {
   console.log("Player with id: \'", socket.id, "\' connected to server!");
   if (Object.keys(voxelPos).length === 0) {
     console.log("Lobby created");
-    buildGameWorld();
+    if (ENTITIES.length == 0 )
+      buildGameWorld();
     let newPlayer = new Voxel(canvas.width / 2, map.height-canvas.height / 2, 0, canvas.width / 12 | 0, "pink", map, canvas, socket.id)
     ENTITIES.push(newPlayer);
     
     PLAYERS.push(newPlayer);
-    voxelPos[socket.id] = {x: canvas.width/2, y :map.height - canvas.width/2};
+    voxelPos[socket.id] = {x: canvas.width/2, y :map.height - canvas.width/2, id: socket.id, viewportY: newPlayer.viewportY};
     io.emit("initialSetup", {blocksPos: toPositions(), players: voxelPos});
   }
   else {
@@ -461,18 +472,8 @@ const SocketHandler = (req, res) => {
   io.on('connection', (socket) => {
     connected(socket);
   });
-  const serverLoop = () => {
-    //  User Interaction
-    userInputs();
-    //  Calculate Physics
-    calcPhysics();
-    //  Game Logic
-    gameLogic();
-    //  render or send render info to player
-    sendRender();
-  }
-  //60 frames per second's worth of info being delivered to client
   server_loop = setInterval(serverLoop, 1000/60);
+  //60 frames per second's worth of info being delivered to client
   res.end();
   
 }

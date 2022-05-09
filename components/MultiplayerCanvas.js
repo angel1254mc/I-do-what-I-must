@@ -15,6 +15,7 @@ const SimpleVoxel = function(x, y, size, id, viewportY) {
     this.id = id;
     this.x = x;
     this.y = y;
+    this.size = size;
     this.viewportY = viewportY;
 }
 SimpleVoxel.prototype = {
@@ -25,7 +26,7 @@ SimpleVoxel.prototype = {
         ctx.beginPath();
         ctx.moveTo(0, 0);
         ctx.stroke();
-        ctx.fillStyle = this.color;
+        ctx.fillStyle = "white";
         ctx.fillRect(
           this.size / -2, 
           this.size / -2, 
@@ -44,18 +45,20 @@ SimpleVoxel.prototype = {
 const SimpleBlock = function(x, y, size, item) {
     this.x = x;
     this.y = y;
-    this.size = size;
+    this.size = canvas.width/10;
+    this.xsize = this.size;
+    this.ysize = this.size/2;
     this.item = new SimpleItem(x + size/2 - canvas.width/24, this.y + canvas.width/12, canvas.width/12);
 }
 SimpleBlock.prototype = {
     draw: function (ctx, viewportX, viewportY) {
       ctx.save();
-      ctx.translate(this.x + viewportX, this.y + viewportY);;
+      ctx.translate(this.x + viewportX, this.y + viewportY);
       ctx.lineWidth = 3;
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.stroke();
-      ctx.fillStyle = this.color;
+      ctx.fillStyle = "white";
       ctx.fillRect(
         this.xsize / -2, 
         this.ysize / -2, 
@@ -82,7 +85,6 @@ const SimpleItem = function (x, y, item) {
 SimpleItem.prototype = {
     draw: function (ctx, viewportX, viewportY) {
     ctx.save();
-    console.log(this.type);
     ctx.translate(this.x + viewportX, this.y + viewportY);
     //Commenting out draw image to figure out images later
     //ctx.drawImage(this.image,0,0,this.xsize, this.ysize);
@@ -90,7 +92,7 @@ SimpleItem.prototype = {
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.stroke();
-      ctx.fillStyle = this.color;
+      ctx.fillStyle = "white";
       ctx.fillRect(
         this.xsize / -2, 
         this.ysize / -2, 
@@ -124,7 +126,7 @@ const renderLoop = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.save();
     blocks.forEach((block) => {
-        block.draw(ctx, 0, myVoxel.viewportY);
+        block.draw(ctx, 0, (myVoxel.viewportY ? myVoxel.viewportY : map.height -canvas.height));
     })
     for (let id in voxels)
     {
@@ -134,13 +136,17 @@ const renderLoop = () => {
 let MultiplayerCanvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartGame, gameType, wonGame, setWonGame, startTimer, gameScore, setGameScore}) => {
 let ID;
 let animationRef;
-
+let socket;
 useEffect(( )=> {
 
     buildCanvas();
+    socketInitializer();
+    
+}, [])
 
+const socketInitializer = async () => {
     fetch('/api/socket').finally(() => {
-        const socket = io();
+        socket = io();
 
         socket.on('connect', () => {
             ID = socket.id;
@@ -148,21 +154,28 @@ useEffect(( )=> {
         socket.on('positionUpdate', players => {
             for (let id in players)
             {
-                let voxel = voxels[id];
+                let voxel = players[id];
+                console.log(voxel);
                 if (!voxels[id])
-                    voxels[id] = new SimpleVoxel(voxel.x, voxel.y, voxel.id, voxel.viewportY);
+                    voxels[id] = new SimpleVoxel(voxel.x, voxel.y, canvas.width/12, voxel.id, voxel.viewportY);
+                else
+                {
+                    voxels[id].x = voxel.x;
+                    voxels[id].y = voxel.y;
+                    voxels[id].viewportY = voxel.viewportY;
+                }
                 if (id == ID)
                     myVoxel = voxels[id];
-                if (id == ID)
+                if (id)
                 playerExists[id] = true;
             }
             for (let id in voxels)
             {
                 if(!playerExists[id]) {
-                    voxels[id].remove();
                     delete voxels[id];
                 }
             }
+            renderLoop();
         })
         socket.on('initialSetup', data => {
             let blocksPos = data.blocksPos;
@@ -177,11 +190,10 @@ useEffect(( )=> {
             console.log("The winner's id is :", data.winner);
             console.log(data.message);
         })
-        animationRef = requestAnimationFrame(renderLoop);
+
+        return null;
     })
-}, [])
-
-
+}
 
 return (
     <div className = "w-[400px] h-[800px]">
