@@ -5,14 +5,13 @@ const clamp = (n, lo, hi) => n < lo ? lo : n > hi ? hi : n;
 const getRandomBetween = (min, max) => {
   return Math.floor(Math.random() * (max-min) + min);
 }
-const buildGameWorld = () => {
-    createManyPlatforms(ENTITIES, 1000, 0, map.height);
-    createFloorPlatforms(ENTITIES);
-    ENTITIES.forEach((box) => {
-        //We are only sending the mapentities
-        MAPENTITIES.push(box);
-    })
+
+//Takes in the MAPENTITIES division corresponding to the room that called the function
+const buildGameWorld = (roomENTITIES) => {
+    createManyPlatforms(roomENTITIES, 1000, 0, map.height);
+    createFloorPlatforms(roomENTITIES);
 }
+
 const createManyPlatforms = (arr, num, start, end) => {
   let prevBox = null;
   let i = 0;
@@ -27,6 +26,7 @@ const createManyPlatforms = (arr, num, start, end) => {
     arr.push(prevBox);
   }
 }
+
 const createRandomPlatform = (prevBox, limits, type) => {
   if (type === 1) 
   {
@@ -37,6 +37,7 @@ const createRandomPlatform = (prevBox, limits, type) => {
     return new Box(randlocale.x, randlocale.y, canvas.width/10, "red", map);
   }
 }
+
 const createFloorPlatforms = (arr) => {
   let prevBox = {x: 0, y: canvas.height-800, xsize: canvas.width/10};
   let curr_x = 0;
@@ -47,6 +48,7 @@ const createFloorPlatforms = (arr) => {
     curr_x = prevBox.x + prevBox.xsize;
   }
 }
+
 const Voxel = function (x, y, angle, size, color, map, canvas, id) {
     this.id =id;
     this.x = x;
@@ -62,9 +64,9 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
     this.ay = 0.1*10;
     this.rv = 0;
     this.angle = angle;
-    this.accelerationAmount = 0.05;
-    this.decelerationAmount = 20*0.02;
-    this.friction = 0.9;
+    this.accelerationAmount = 10*0.05;
+    this.decelerationAmount = 1*0.02;
+    this.friction = 0.85;
     this.rotationSpd = 0.01;
     this.size = size;
     this.radius = size;
@@ -82,6 +84,7 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
         right: false,
     }
   };
+
   Voxel.prototype = {
     acceleratex: function (direction) {
       this.ax += this.accelerationAmount * direction;
@@ -186,6 +189,7 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
       bottom: this.y + this.ysize/4,
     };
   }
+
   Box.prototype = {
     draw: function (ctx, viewportX, viewportY) {
       ctx.save();
@@ -275,7 +279,14 @@ Item.prototype = {
     console.log("Does nothing right now!");
   }
 }
-
+/**
+ * 
+ * 
+ * Ignore everything above here its all complete basically
+ * 
+ * 
+ */
+//General format of what the server loop should look like
 const mainLoop = () => {
     //  User Interaction
     userInputs();
@@ -289,93 +300,102 @@ const mainLoop = () => {
     requestAnimationFrame(mainLoop);
 }
 
-const userInputs = () => {
-    ENTITIES.forEach((body) => {
-        if (body instanceof Voxel)
-            body.processKeys();
-    });
+const userInputs = (roomName) => {
+  let roomPLAYERS = PLAYERS[roomName];
+  for (let id in roomPLAYERS)
+  {
+    roomPLAYERS[id].processKeys();
+  }
 }
 
-const calcPhysics = () => {
-    ENTITIES.forEach((body) => {
-        if (body instanceof Voxel)
-        {
-            body.move();
-            body.updateViewport();
-        }
-    });
+const calcPhysics = (roomName) => {
+  let roomPLAYERS = PLAYERS[roomName];
+  for (let id in roomPLAYERS)
+  {
+    
+    roomPLAYERS[id].move();
+    roomPLAYERS[id].updateViewport();
+  }
 }
-
-const gameLogic = () => {
-    ENTITIES.forEach((voxel) => {
-        if (voxel instanceof Voxel)
-        ENTITIES.forEach((box) => {
-            if (box instanceof Box)
-                voxel.step(box);
-        })
-    if (voxel.y > voxel.miny + canvas.height/2.0 + voxel.size)
+//Checks if the given player has lost
+const checkLoseCondition = (player) => {
+  if (player.y > player.miny + canvas.height/2.0 + player.size)
+  {
+      
+      //stopGame(ref)
+      //setLostGame(true);
+      gameOver = true;
+      //server_loop ? clearInterval(server_loop) : server_loop = 1;
+  }
+}
+const checkWinCondition = (player) => {
+  if (player.y + player.size <= -20)
+  {
+      player.vy = -30.8;
+      player.viewportY = clamp(player.canvas.height / 3.8 - player.y, player.canvas.height/3.8-player.y, 1000 );
+      console.log("Voxel of id ", player.id, " Won!");
+  }
+}
+const limitedGameLogic = (roomName) => {
+  let roomPLAYERS = PLAYERS[roomName];
+  //for each player in the room
+  for (let id in roomPLAYERS)
+  {
+    let voxel = roomPLAYERS[id];
+    if (voxel.y + voxel.size > voxel.miny + canvas.height/2.0)
+      voxel.bounce(1);
+  }
+}
+const gameLogic = (roomName) => {
+    let roomPLAYERS = PLAYERS[roomName];
+    //for each player in the room, do the following
+    for (let id in roomPLAYERS)
     {
-        
-        //stopGame(ref)
-        //setLostGame(true);
-        gameOver = true;
-        server_loop ? clearInterval(server_loop) : server_loop = 1;
+      let voxel = roomPLAYERS[id];
+      MAPENTITIES[roomName].forEach((box) => {
+          voxel.step(box);
+      });
+
+      checkLoseCondition(voxel);
+      checkWinCondition(voxel);
+      //Do this if the game is over
+      if (gameOver)
+      {
+         io.emit("gameOver", {winner: voxel.id, message: "hopefully this works"});
+      }
     }
-    if (voxel.y + voxel.size <= -20)
-    {
-        voxel.vy = -30.8;
-        voxel.viewportY = clamp(voxel.canvas.height / 3.8 - voxel.y, voxel.canvas.height/3.8-voxel.y, 1000 );
-        console.log("Voxel of id ", voxel.id, " Won!");
-    }
-    if (gameOver)
-    {
-       io.emit("gameOver", {winner: voxel.id, message: "hopefully this works"});
-       clearInterval(server_loop);
-    }
-  });
 }
 
-const renderLoop =() => {
-    let viewportY = ENTITIES.voxel.viewportY;
-    MAPENTITIES.forEach((body) =>
-    {
-        body.draw(ctx, 0, viewportY);
-    });
-    PLAYERS.forEach((voxel) => {
-        voxel.draw(ctx, 0, viewPortY)
-    });
+const renderLoop = (roomName) => {
+    //Nothing because im not a client!
 }
 
-const sendRender = () => {
-    PLAYERS.forEach((body) =>
+const sendRender = (roomName) => {
+    for (let id in PLAYERS[roomName])
     {
-        if (body instanceof Voxel)
-        {
-          voxelPos[body.id] = {
-            x: body.x,
-            y: body.y,
-            id: body.id,
-            viewportY: body.viewportY
-          }
+      let body = PLAYERS[roomName][id];
+      voxelPos[roomName][body.id] = {
+        x: body.x,
+        y: body.y,
+        id: body.id,
+        viewportY: body.viewportY
+      }
             // emit all of these to all users
             //io.emit('positionUpdate', voxelPos);
-        }
-    });
-    io.emit('positionUpdate',voxelPos);
+    };
+    io.to(roomName).emit('renderUpdate',{voxelPos: voxelPos[roomName]});
 }
-const toPositions = () => {
+const toPositions = (roomName) => {
   let blockItemPositions = [];
-  //This is going to be a sizeable payload
+  //This is going to be a sizeable payload, so it should only be delivered once per player in a room
   //Type 1 denotes blocks
   //Type 2 denotes items
-  ENTITIES.forEach((boxOrItem, index) => {
+  MAPENTITIES[roomName].forEach((box, index) => {
     //If the entity is not a Voxel
-    if (!(boxOrItem instanceof Voxel))  {
-      blockItemPositions[index] = {
-        x: boxOrItem.x,
-        y: boxOrItem.y,
-        item: boxOrItem.itemType
-      }
+    blockItemPositions[index] = {
+      x: box.x,
+      y: box.y,
+      item: box.itemType
     }
   })
   return blockItemPositions;
@@ -387,35 +407,160 @@ import {Server} from 'socket.io'
 const express = require('express')
 let io;
 let voxelPos = {};
-let viewportX = 0;
-  let viewportY = 0;
-  let gameOver = false;
-  let canvas = {
+let gameOver = false;
+let canvas = {
     height: 800,
     width: 600,
   }
-  let map = {
+let map = {
     height: canvas.height * 20, 
     width: canvas.width
   };
-  let ENTITIES = [];
-  let PLAYERS = [];
-  let server_loop;
-  let MAPENTITIES =[];
+
+  //PlAYERS and MAPENTITIES now each take in [RoomID], and each stores an object/array of players/blocks
+let PLAYERS = {};
+let MAPENTITIES = {};
+let ROOMPROPS = {};
+let server_loop; //Stores the global server loop
+
   const serverLoop = () => {
+    //Server loop runs UNIVERSALLY, BUT each step handles the different rooms
     //  User Interaction
-    userInputs();
-    //  Calculate Physics
-    calcPhysics();
-    //  Game Logic
-    gameLogic();
-    //  render or send render info to player
-    sendRender();
+    (Object.keys(ROOMPROPS)).forEach(roomName =>{
+      if (ROOMPROPS[roomName].renderLoop != 0)
+      userInputs(roomName);
+      //  Calculate Physics
+      if (ROOMPROPS[roomName].renderLoop != 0)
+        calcPhysics(roomName);
+      //  Game Logic
+      if (ROOMPROPS[roomName].renderLoop == "Limited")
+        limitedGameLogic(roomName);
+      else if (ROOMPROPS[roomName].renderLoop != 0)
+        gameLogic(roomName);
+      //  render or send render info to player
+      if (ROOMPROPS[roomName].renderLoop != 0)
+      {
+        sendRender(roomName);
+      }
+    })
   }
 
 let connected = (socket) => {
   console.log("Player with id: \'", socket.id, "\' connected to server!");
-  if (Object.keys(voxelPos).length === 0) {
+  let stateUpdate = {
+    gameState: "Choosing",
+    playerState: -1
+  }
+  socket.to(socket.id).emit('updateState', stateUpdate);
+
+  socket.on("create-room", (roomName) => {
+    if (io.sockets.adapter.rooms.has(roomName))
+    {
+      //The room exists, cant create it
+      io.to(socket.id).emit("invalidLobby", "name is taken");
+    }
+    else
+    {
+      socket.join(roomName);
+      //Establishing room properties that establish whether a render cycle is necessary, mapsize, if its joinable
+      ROOMPROPS[roomName] = {
+        id: roomName,
+        players: 1,
+        joinable: 0,
+        mapsize: canvas.height*10,
+        creator: socket.id,
+        renderLoop: 0,
+        playing: 0,
+        roomName: roomName
+      }
+      //Establishing that the room exists, just no players.
+      PLAYERS[roomName] = {};
+      MAPENTITIES[roomName] = [];
+      voxelPos[roomName] = {};
+      //Add the creator to the players in the room
+      io.to(roomName).emit("created-room", ROOMPROPS);
+    }
+  })
+  socket.on("join-room", (roomName) => {
+    if (io.sockets.adapter.rooms.has(roomName))
+    {
+      //The room exists, continue
+      if (ROOMPROPS[roomName].joinable)
+      {
+        socket.join(roomName);
+        //Updating Room properties
+        ROOMPROPS[roomName].players = ROOMPROPS[roomName].players + 1;
+        PLAYERS[roomName][socket.id] = new Voxel (
+          canvas.width / 2, 
+          map.height-canvas.height / 2, 
+          0, 
+          canvas.width / 12, 
+          "white", 
+          map, 
+          canvas, 
+          socket.id
+          );
+  
+        voxelPos[roomName][socket.id] =  {
+          x: canvas.width/2, 
+          y: map.height - canvas.height/2, 
+          id: socket.id, 
+          viewportY: PLAYERS[roomName][socket.id].viewportY
+        };
+
+        //Sending the already existing level data to new user
+        io.to(socket.id).emit('builtGame', {
+          roomprops: ROOMPROPS[roomName],
+          blocksPos: toPositions(roomName),
+          voxelPos: voxelPos[roomName]
+        })
+      }
+      else //The room cannot be joined because they are not in lobby
+      {
+        io.to(socket.id).emit("invalidRoom", "Room cannot be joined yet");
+      }
+    }
+    else
+    {
+      //The room doesn't exist, do not continue
+      io.to(socket.id).emit("invalidRoom", "Room does not exist");
+    }
+  })
+
+  socket.on("build-game", roomName => {
+      //Create all platform
+      if (MAPENTITIES[roomName].length == 0)
+        buildGameWorld(MAPENTITIES[roomName]);
+      PLAYERS[roomName][socket.id] = new Voxel (
+        canvas.width / 2, 
+        map.height-canvas.height / 2, 
+        0, 
+        canvas.width / 12, 
+        "white", 
+        map, 
+        canvas, 
+        socket.id
+        );
+
+      voxelPos[roomName][socket.id] =  {
+        x: canvas.width/2, 
+        y: map.height - canvas.height/2, 
+        id: socket.id, 
+        viewportY: PLAYERS[roomName][socket.id].viewportY
+      };
+      ROOMPROPS[roomName].joinable = 1;
+      console.log("Emitting level data to room")
+      io.to(socket.id).emit('builtGame', {
+        roomprops: ROOMPROPS[roomName],
+        blocksPos: toPositions(roomName),
+        voxelPos: voxelPos[roomName]
+      });
+
+  })
+  socket.on("receivedInitialData", roomName => {
+    ROOMPROPS[roomName].renderLoop = "Limited";
+  })
+  /**if (Object.keys(voxelPos).length === 0) {
     console.log("Lobby created");
     if (ENTITIES.length == 0 )
       buildGameWorld();
@@ -433,7 +578,7 @@ let connected = (socket) => {
     PLAYERS.push(newPlayer);
     voxelPos[socket.id] = {x: canvas.width/2, y :map.height - canvas.width/2};
     io.to(socket.id).emit("initialSetup", {blocksPos: toPositions(), players: voxelPos})
-  }
+  }*/
   socket.on('disconnect', function() {
     /**MODIFY tHIS, THIS IS HELLA INEFFICIENT */
       ENTITIES.forEach((voxel, index) => {
@@ -443,28 +588,36 @@ let connected = (socket) => {
       PLAYERS.forEach((voxel, index) => {
         if (voxel.id == socket.id)
           PLAYERS.splice(index,1);
+          
       })
       delete voxelPos[socket.id];
-      console.log("Player with id: \'", socket.id, "\' has left!");
-      console.log("Current number of players:", (PLAYERS.length));
+      if (Object.keys(voxelPos).length === 0)
+        clearInterval(server_loop);
       io.emit('positionUpdate', voxelPos);
   })
   socket.on('userCommands', data => {
-    PLAYERS.forEach((player) => {
-      if (player.id == socket.id)
+    let roomPLAYERS = PLAYERS[data.roomName]
+      for (let id in roomPLAYERS)
       {
-        player.moves.left = data.left;
-        player.moves.right = data.right;
-        console.log("Command recognized");
+        if (id == socket.id)
+        {
+          roomPLAYERS[id].moves.left = data.left;
+          roomPLAYERS[id].moves.right = data.right;
+        }
       }
     })
-  })
 }
+
 const SocketHandler = (req, res) => {
+  //Handles creation and connection of the server
+  
   if (!res.socket.server.io) {
     console.log("*First use, so starting server");
     io = new Server(res.socket.server);
     res.socket.server.io = io;
+  }
+  else {
+    io = res.socket.server.io;
   }
 
   //let selfID = "id of the emitting client";
@@ -472,8 +625,9 @@ const SocketHandler = (req, res) => {
   io.on('connection', (socket) => {
     connected(socket);
   });
-  server_loop = setInterval(serverLoop, 1000/60);
-  //60 frames per second's worth of info being delivered to client
+  if (!server_loop)
+    server_loop = setInterval(serverLoop, 1000/120);
+  //120 frames per second's worth of info being delivered to client
   res.end();
   
 }
