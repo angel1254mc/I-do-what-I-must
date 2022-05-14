@@ -1,5 +1,6 @@
 
 import React from 'react';
+import Results from './Results';
 import io from 'socket.io-client'
 import { useEffect } from 'react';
 
@@ -12,9 +13,12 @@ let blocks = [];
 const voxelList = {};
 let justPressed = false;
 let socket;
+let socketCreated = false;
 let ID;
 let ROOMPROPS;
 let gameStateOuter = "Choosing";
+let playerStateOuter = "Inactive";
+let finalResults; //This will be populated when the game ends, and depopulated when the user goes to the main menu
 
 
 
@@ -177,10 +181,11 @@ let MultiplayerCanvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartG
     let keys_object = {left: false, right: true}; //Denotes which arrow keys have been pressed
 
     let [socketConnected, setSocketConnected] = React.useState(false); //used to remember when the socket is connected
-    let [playerState, setPlayerState] = React.useState("Alive"); /**
+    let [playerState, setPlayerState] = React.useState("Inactive"); /**
      * Used to determine the state at the client level
      * For instance, just because the client is dead doesn't mean the game is over
      */
+    let [playerName, setPlayerName] = React.useState("Default");
     let [roomName, setRoomName] = React.useState("");
     let [gameState, setGameState] = React.useState("Choosing");
     /** Denotes the state of the game at the global state.
@@ -213,18 +218,23 @@ let MultiplayerCanvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartG
 
     let handleJoinGame = (e) => {
         e.preventDefault();
-        socket.emit("join-room", roomName);
+        socket.emit("join-room", {roomName: roomName, playerName: playerName });
         gameStateOuter = "Waiting";
     }
     let handleCreateGame = (e) => {
         e.preventDefault();
-        socket.emit("create-room", roomName);
+        socket.emit("create-room", {roomName: roomName, playerName: playerName});
         gameStateOuter = "Creating"
     }
     let handleBuildGame = (e) => {
         e.preventDefault();
         socket.emit("build-game", roomName);
         gameStateOuter = "Waiting";
+    }
+    let handleStartGame = (e) => {
+        e.preventDefault();
+        socket.emit("start-game", roomName);
+        gameStateOuter = "Playing";
     }
 //Event listeners for the arrow keys
 function userInput(obj){
@@ -276,23 +286,28 @@ useEffect(( )=> {
     socketInitializer();
     //establish event listeners
     userInput(keys_object);
-    
+    return function socketUnsub() {
+        let listeners = ['host-started', 'invalidLobby', 'created-room', 'builtGame', 'renderUpdate', 'playerStateUpdate', "gameOver"]
+        socket.removeAllListeners();
+    }
 }, [])
 
 const socketInitializer = async () => {
     if (!socket)
     fetch('/api/socket').finally(() => {
+        socketCreated = true;
         socket = io();
         socket.on('connect', () => {
             ID = socket.id;
+            setGameState("Choosing");
         })
 
-
+        socket.on('host-started', () => {
+            ROOMPROPS.renderLoop = "Visible";
+            setGameState("Playing");
+        })
         socket.on('invalidLobby', (message)=> {
             console.log("Invalid Lobby: ", message );
-        })
-        socket.on('updateState', (stateUpdate) => {
-            setGameState(stateUpdate.gameState);
         })
         socket.on('created-room', roomprops => {
             ROOMPROPS = roomprops;
@@ -369,6 +384,37 @@ const socketInitializer = async () => {
             }
             renderLoop();
         });
+        socket.on('playerStateUpdate', PLAYERENDDATA => {
+            if (gameStateOuter == "Playing")
+            {
+                if (PLAYERENDDATA.id == myVoxel.id)
+                {
+                    delete voxelList[ID]; 
+                    //Get the first random
+                    myVoxel = voxelList[Object.keys(voxelList)[1]]
+                }
+                if (PLAYERENDDATA.outcome == "won")
+                {
+                    setPlayerState("Won");
+                    playerStateOuter = "Won";
+                }
+                else if (PLAYERENDDATA.outcome == "lost")
+                {
+                    setPlayerState("Lost");
+                    playerStateOuter = "Lost";
+                }
+            }
+        });
+        socket.on("gameOver" , FINALDATASERVER => {
+            //Final Data Server is supposed to be a collection of all the players in the lovvy and their final placements
+            //Here, the game should have stopped rendering, a react component will come through and display all the players and their results!
+            //In order to do this, we need to update the state of the game, 
+            //Also, save the game-end data object locally in the component, in order to display it later
+            finalResults = FINALDATASERVER;
+            setGameState("Finished");
+            setPlayerState("Inactive");
+            //Then display the stuff, which should be handled by
+        });
         /** 
         socket.on('positionUpdateGame', players => {
             let playerExists = {};
@@ -423,17 +469,23 @@ return (
     
     <div className = "w-[400px] h-[800px]">
         {gameState == "Choosing" ? <div className = "absolute w-full h-full flex flex-col items-center m-1">
-          <div className = "relative text-center leader-lg text-6xl mt-[100px] text-white font-extrabold bg-main-leader">Multiplayer Options</div>
-          <div className = "flex flex-col justify-center relative leader2-lg text-2xl mt-[20px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
-            <form>
-                <button className="h-[40px] w-1/2 mr-[10px]" type="submit" onClick={(e) => {handleJoinGame(e)}}>Join Game</button>
-                <input className = "w-1/3 mt-[20px] h-[40px] bg-black text-white" type="text" value={roomName} onChange={(e) => {setRoomName(e.target.value)}}/>
+          <div className = "relative text-center leader-lg text-5xl mt-[100px] text-white font-extrabold bg-main-leader">Multiplayer Options</div>
+          <div className = "flex flex-col justify-center relative leader2-lg text-2xl mt-[20px] w-1/2 h-[80px] items-center text-white ">
+            <form className="flex flex-row justify-around align-center">
+                <div className="text-xl">Display Name: </div>
+                <input className = "w-2/3  bg-transparent border-2 rounded-md border-black bg-slate-800 text-white" type="text" value={playerName} onChange={(e) => {setPlayerName(e.target.value)}}/>
             </form>
           </div>
           <div className = "flex flex-col justify-center relative leader2-lg text-2xl mt-[20px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
-            <form>
+            <form className="flex flex-row justify-center align-center">
+                <button className="h-[40px] w-1/2 mr-[10px]" type="submit" onClick={(e) => {handleJoinGame(e)}}>Join Game</button>
+                <input className = "w-1/3  bg-transparent border-2 rounded-md border-black text-white" type="text" value={roomName} onChange={(e) => {setRoomName(e.target.value)}}/>
+            </form>
+          </div>
+          <div className = "flex flex-col justify-center relative leader2-lg text-2xl mt-[20px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
+            <form className="flex flex-row justify-center align-center">
                 <button className="h-[40px] w-1/2 mr-[10px]" type="submit" onClick={(e) => {handleCreateGame(e)}}>Create Game</button>
-                <input className= "w-1/3 mt-[20px] h-[40px] bg-black text-white" type="text" value={roomName} onChange={(e) => {setRoomName(e.target.value)}}/>
+                <input className= "w-1/3 bg-transparent border-2 rounded-md border-black text-white" type="text" value={roomName} onChange={(e) => {setRoomName(e.target.value)}}/>
             </form>
           </div>
           <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button "><button className="h-full w-1/2" onClick={() => {}}>Back to Menu</button></div>
@@ -445,6 +497,28 @@ return (
           </div>
           <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button "><button className="h-full w-1/2" onClick={() => {console.log("Return to main menu")}}>Back to Menu</button></div>
         </div> : <div></div>}
+        {gameState == "Waiting" ? <div className = "absolute w-full h-full flex flex-col items-center m-1">
+          <div className = "flex justify-center relative leader2-lg text-3xl mt-[50px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
+            <button className="h-full w-1/2" onClick={(e) => {handleStartGame(e)}}>Start Game</button>
+          </div>
+        </div> : <div></div>}
+        {
+            playerState == "Won" && gameState == "Playing" ? 
+            <div className = "absolute w-full h-full flex flex-col items-center m-1">
+              <div className = "flex justify-center relative leader2-lg text-3xl mt-[50px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
+                <button className="h-full w-1/2" onClick={(e) => {}}>You Won!</button>
+              </div>
+            </div>
+            : playerState == "Lost" && gameState == "Playing" ?
+            <div className = "absolute w-full h-full flex flex-col items-center m-1">
+                <div className = "flex justify-center relative leader2-lg text-3xl mt-[50px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
+                    <button className="h-full w-1/2" onClick={(e) => {}}>You Lost!</button>
+                </div>
+            </div>
+            : 
+            <div></div>
+        }
+        { gameState == "Finished" ? <Results finalResults = {finalResults}></Results> : <div></div> }
       <div id= "canvas-holder-game">
       </div>
     </div>

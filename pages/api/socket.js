@@ -1,5 +1,4 @@
 
-
 //Utility/World building functions
 const clamp = (n, lo, hi) => n < lo ? lo : n > hi ? hi : n;
 const getRandomBetween = (min, max) => {
@@ -251,7 +250,6 @@ const Item = function (x, y, size, image, map, type,multiplier) {
 Item.prototype = {
     draw: function (ctx, viewportX, viewportY) {
     ctx.save();
-    console.log(this.type);
     ctx.translate(this.x + viewportX, this.y + viewportY);
     //Commenting out draw image to figure out images later
     //ctx.drawImage(this.image,0,0,this.xsize, this.ysize);
@@ -317,23 +315,47 @@ const calcPhysics = (roomName) => {
     roomPLAYERS[id].updateViewport();
   }
 }
-//Checks if the given player has lost
-const checkLoseCondition = (player) => {
-  if (player.y > player.miny + canvas.height/2.0 + player.size)
+const removePlayerData = (id, roomName) => {
+  if (PLAYERS[roomName])
   {
-      
-      //stopGame(ref)
-      //setLostGame(true);
-      gameOver = true;
-      //server_loop ? clearInterval(server_loop) : server_loop = 1;
+    delete playerRoomMap[id];
+    delete PLAYERS[roomName][id];
+    delete voxelPos[roomName][id];
   }
 }
-const checkWinCondition = (player) => {
+//Checks if the given player has lost
+const checkLoseCondition = (player, roomName) => {
+  if (player.y > player.miny + canvas.height/2.0 + player.size)
+  {
+      PLAYERENDDATA[roomName][player.id] = {
+        id: player.id, 
+        name: SOCKETTONAME[player.id],
+        outcome: "lost",
+        where: player.y
+      }
+      //Data about players that won is sent to all players. Client is the one that decides what to do with it
+      //If player that lost == client id, then client enters playerState "Dead", where UI appears and player 
+      //Begins spectating a random other player
+      removePlayerData(player.id, roomName);
+      if (Object.keys(PLAYERENDDATA[roomName]).length == ROOMPROPS[roomName].players)
+        io.to(roomName).emit("gameOver", PLAYERENDDATA[roomName])
+      io.to(roomName).emit("playerStateUpdate", PLAYERENDDATA[roomName][player.id]);
+  }
+}
+const checkWinCondition = (player, roomName) => {
   if (player.y + player.size <= -20)
   {
-      player.vy = -30.8;
-      player.viewportY = clamp(player.canvas.height / 3.8 - player.y, player.canvas.height/3.8-player.y, 1000 );
+      PLAYERENDDATA[roomName][player.id] = {
+        id: player.id,
+        name: SOCKETTONAME[player.id],
+        outcome: "won",
+        place: (WINNERS[roomName].push(player.id)), 
+      }
       console.log("Voxel of id ", player.id, " Won!");
+      removePlayerData(player.id, roomName);
+      if (Object.keys(PLAYERENDDATA[roomName]).length == ROOMPROPS[roomName].players)
+        io.to(roomName).emit("gameOver", PLAYERENDDATA[roomName])
+      io.to(roomName).emit("playerStateUpdate", PLAYERENDDATA[roomName][player.id]);
   }
 }
 const limitedGameLogic = (roomName) => {
@@ -348,7 +370,7 @@ const limitedGameLogic = (roomName) => {
 }
 const gameLogic = (roomName) => {
     let roomPLAYERS = PLAYERS[roomName];
-    //for each player in the room, do the following
+    //for each player in the room, implement stepping and check if theyve lost or won
     for (let id in roomPLAYERS)
     {
       let voxel = roomPLAYERS[id];
@@ -356,8 +378,8 @@ const gameLogic = (roomName) => {
           voxel.step(box);
       });
 
-      checkLoseCondition(voxel);
-      checkWinCondition(voxel);
+      checkLoseCondition(voxel, roomName);
+      checkWinCondition(voxel, roomName);
       //Do this if the game is over
       if (gameOver)
       {
@@ -421,40 +443,44 @@ let map = {
 let PLAYERS = {};
 let MAPENTITIES = {};
 let ROOMPROPS = {};
+let PLAYERENDDATA = {};
+let WINNERS = {};
+let SOCKETTONAME = {};
 let server_loop; //Stores the global server loop
+const playerRoomMap = new Map();
 
   const serverLoop = () => {
     //Server loop runs UNIVERSALLY, BUT each step handles the different rooms
     //  User Interaction
     (Object.keys(ROOMPROPS)).forEach(roomName =>{
-      if (ROOMPROPS[roomName].renderLoop != 0)
-      userInputs(roomName);
-      //  Calculate Physics
-      if (ROOMPROPS[roomName].renderLoop != 0)
-        calcPhysics(roomName);
-      //  Game Logic
-      if (ROOMPROPS[roomName].renderLoop == "Limited")
-        limitedGameLogic(roomName);
-      else if (ROOMPROPS[roomName].renderLoop != 0)
-        gameLogic(roomName);
-      //  render or send render info to player
-      if (ROOMPROPS[roomName].renderLoop != 0)
+      //If the current room is either palying or waiting, perform the render loop. Otherwise dont
+      if (ROOMPROPS[roomName].roomState == "Playing" || ROOMPROPS[roomName].roomState == "Waiting")
       {
-        sendRender(roomName);
+        if (ROOMPROPS[roomName].renderLoop != 0)
+        userInputs(roomName);
+        //  Calculate Physics
+        if (ROOMPROPS[roomName].renderLoop != 0)
+          calcPhysics(roomName);
+        //  Game Logic
+        if (ROOMPROPS[roomName].renderLoop == "Limited")
+          limitedGameLogic(roomName);
+        else if (ROOMPROPS[roomName].renderLoop == "Playing")
+          gameLogic(roomName);
+        //  render or send render info to player
+        if (ROOMPROPS[roomName].renderLoop != 0)
+        {
+          sendRender(roomName);
+        }
       }
     })
   }
 
 let connected = (socket) => {
   console.log("Player with id: \'", socket.id, "\' connected to server!");
-  let stateUpdate = {
-    gameState: "Choosing",
-    playerState: -1
-  }
-  socket.to(socket.id).emit('updateState', stateUpdate);
+  //socket.to(socket.id).emit('updateState', stateUpdate);
 
-  socket.on("create-room", (roomName) => {
-    if (io.sockets.adapter.rooms.has(roomName))
+  socket.on("create-room", ({roomName, playerName}) => {
+    if (io.sockets.adapter.rooms.has(roomName) && ROOMPROPS[roomName])
     {
       //The room exists, cant create it
       io.to(socket.id).emit("invalidLobby", "name is taken");
@@ -462,6 +488,8 @@ let connected = (socket) => {
     else
     {
       socket.join(roomName);
+      playerRoomMap[socket.id] = roomName;
+      SOCKETTONAME[socket.id] = playerName;
       //Establishing room properties that establish whether a render cycle is necessary, mapsize, if its joinable
       ROOMPROPS[roomName] = {
         id: roomName,
@@ -471,23 +499,28 @@ let connected = (socket) => {
         creator: socket.id,
         renderLoop: 0,
         playing: 0,
-        roomName: roomName
+        roomName: roomName,
+        roomState: "Creating"
       }
       //Establishing that the room exists, just no players.
       PLAYERS[roomName] = {};
       MAPENTITIES[roomName] = [];
       voxelPos[roomName] = {};
+      WINNERS[roomName] = [];
+      PLAYERENDDATA[roomName] = {};
       //Add the creator to the players in the room
       io.to(roomName).emit("created-room", ROOMPROPS);
     }
   })
-  socket.on("join-room", (roomName) => {
-    if (io.sockets.adapter.rooms.has(roomName))
+  socket.on("join-room", ({roomName, playerName}) => {
+    if (io.sockets.adapter.rooms.has(roomName) && !PLAYERS[roomName][socket.id])
     {
       //The room exists, continue
       if (ROOMPROPS[roomName].joinable)
       {
         socket.join(roomName);
+        playerRoomMap[socket.id] = roomName;
+        SOCKETTONAME[socket.id] = playerName;
         //Updating Room properties
         ROOMPROPS[roomName].players = ROOMPROPS[roomName].players + 1;
         PLAYERS[roomName][socket.id] = new Voxel (
@@ -549,6 +582,7 @@ let connected = (socket) => {
         viewportY: PLAYERS[roomName][socket.id].viewportY
       };
       ROOMPROPS[roomName].joinable = 1;
+      ROOMPROPS[roomName].roomState = "Waiting";
       console.log("Emitting level data to room")
       io.to(socket.id).emit('builtGame', {
         roomprops: ROOMPROPS[roomName],
@@ -557,43 +591,50 @@ let connected = (socket) => {
       });
 
   })
+  //Wait until level data is received by all clients until actually engaging in rendering
   socket.on("receivedInitialData", roomName => {
     ROOMPROPS[roomName].renderLoop = "Limited";
   })
-  /**if (Object.keys(voxelPos).length === 0) {
-    console.log("Lobby created");
-    if (ENTITIES.length == 0 )
-      buildGameWorld();
-    let newPlayer = new Voxel(canvas.width / 2, map.height-canvas.height / 2, 0, canvas.width / 12 | 0, "pink", map, canvas, socket.id)
-    ENTITIES.push(newPlayer);
-    
-    PLAYERS.push(newPlayer);
-    voxelPos[socket.id] = {x: canvas.width/2, y :map.height - canvas.width/2, id: socket.id, viewportY: newPlayer.viewportY};
-    io.emit("initialSetup", {blocksPos: toPositions(), players: voxelPos});
-  }
-  else {
-    console.log("Current number of players:", (PLAYERS.length + 1));
-    let newPlayer = new Voxel(canvas.width / 2, map.height-canvas.height / 2, 0, canvas.width / 12 | 0, "pink", map, canvas, socket.id)
-    ENTITIES.push(newPlayer);
-    PLAYERS.push(newPlayer);
-    voxelPos[socket.id] = {x: canvas.width/2, y :map.height - canvas.width/2};
-    io.to(socket.id).emit("initialSetup", {blocksPos: toPositions(), players: voxelPos})
-  }*/
+  socket.on("start-game", roomName => {
+    for (let id in PLAYERS[roomName])
+    {
+      let voxel = PLAYERS[roomName][id];
+      voxel.x = 300;
+      voxel.y = map.height-canvas.height/2;
+      voxel.move();
+    }
+    ROOMPROPS[roomName].renderLoop = "Playing";
+    ROOMPROPS[roomName].roomState = "Playing";
+    ROOMPROPS[roomName].joinable = 0;
+    //Initialize this to keep track of whether players are dead or not
+    PLAYERENDDATA[roomName] = {};
+    io.to(roomName).emit("host-started")
+
+  })
+ 
   socket.on('disconnect', function() {
-    /**MODIFY tHIS, THIS IS HELLA INEFFICIENT */
-      ENTITIES.forEach((voxel, index) => {
-        if (voxel.id == socket.id)
-          ENTITIES.splice(index,1);
-      })
-      PLAYERS.forEach((voxel, index) => {
-        if (voxel.id == socket.id)
-          PLAYERS.splice(index,1);
-          
-      })
-      delete voxelPos[socket.id];
-      if (Object.keys(voxelPos).length === 0)
-        clearInterval(server_loop);
-      io.emit('positionUpdate', voxelPos);
+      /**MODIFY tHIS, THIS IS HELLA INEFFICIENT */
+      /**Update: Modified this to be way more efficient! :) now */
+      if (!playerRoomMap[socket.id])
+      {
+        console.log("Player ", socket.id, " has left!");
+        return
+      }
+      let roomName = playerRoomMap[socket.id];
+      console.log("Player ", socket.id, " has left room ", roomName)
+      delete PLAYERS[roomName][socket.id]
+      delete voxelPos[roomName][socket.id];
+      if (PLAYERENDDATA[roomName])
+        delete PLAYERENDDATA[roomName][socket.id]
+      if (Object.keys(voxelPos[roomName]).length === 0)
+      {
+        //delete all data to ensure room can be recreated
+        delete voxelPos[roomName];
+        delete PLAYERS[roomName];
+        delete MAPENTITIES[roomName];
+        delete ROOMPROPS[roomName];
+        console.log("Room is empty and will hopefully delete itself");
+      }
   })
   socket.on('userCommands', data => {
     let roomPLAYERS = PLAYERS[data.roomName]
