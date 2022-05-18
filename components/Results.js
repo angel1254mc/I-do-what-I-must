@@ -57,10 +57,10 @@ const Results = ({finalResults}) => {
 
 
   return (
-    <div className = "absolute fadeResults m-1 h-full w-full overflow-x-hidden overflow-y-auto bg-slate-700">
+    <div className = "absolute fadeResults m-1 h-full w-full overflow-x-hidden overflow-y-auto bg-black">
         <div className = "results-container-inner  mt-[160px] mx-[15px] ">
             <h1 className = "text-4xl text-white text-center w-full"> Winners: </h1>
-            <table className = " table-auto w-full text-center text-white mt-5">
+            <table id = "results-table" className = "fadeTable table-auto w-full text-center text-white mt-5">
                 <thead>
                     <tr>
                         <th className = "text-2xl">Place</th>
@@ -76,30 +76,25 @@ const Results = ({finalResults}) => {
                         winners.map((winner, index) => {
                             return (
                                 <tr key= {index}>
-                                    <td className = "pt-10" scope = "row">{index+1}</td>
-                                    <td className= "pt-10 text-amber-500">{winner}</td>
-                                    <td className = "pt-10">"Image Here"</td>
+                                    <td className = "py-10" scope = "row">{index+1}</td>
+                                    <td className= "py-10 text-amber-500">{winner}</td>
+                                    <td className = "py-10">"Image Here"</td>
                                 </tr>
                             )
                         }) 
                         : <div className="text-4xl">Results Render Failed</div>
                     }
-                </tbody>
-            </table>
-            <h1 className = "text-3xl text-white text-center w-full mt-10"> Did Not Finish: </h1>
-            <table className = " table-auto w-full text-center text-white mt-5">
-                <tbody>
                     {losers && losers.length > 0 ? 
                         losers.map((loser, index) => {
                             return (
                                 <tr key= {index}>
-                                    <td className = "pt-10" scope = "row">{index+1}</td>
-                                    <td className= "pt-10 text-amber-500">{loser}</td>
-                                    <td className = "pt-10">"Image Here"</td>
+                                    <td className = "py-10" scope = "row">{"DNF"}</td>
+                                    <td className= "py-10 text-amber-500">{loser}</td>
+                                    <td className = "py-10">"Image Here"</td>
                                 </tr>
                             )
                         }) 
-                        : <div className="text-4xl">Results Render Failed</div>
+                        : ""
                     }
                 </tbody>
             </table>

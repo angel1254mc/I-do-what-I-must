@@ -63,6 +63,7 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
     this.ay = 0.1*10;
     this.rv = 0;
     this.angle = angle;
+    this.bouncing = false;
     this.accelerationAmount = 10*0.05;
     this.decelerationAmount = 1*0.02;
     this.friction = 0.85;
@@ -91,6 +92,7 @@ const Voxel = function (x, y, angle, size, color, map, canvas, id) {
     bounce: function (multiplier) {
       if (this.vy > 0)
       {
+        this.bouncing = true;
         this.vy = 2.5*multiplier*-10.8;
       }
     },
@@ -400,8 +402,10 @@ const sendRender = (roomName) => {
         x: body.x,
         y: body.y,
         id: body.id,
+        bouncing: body.bouncing,
         viewportY: body.viewportY
       }
+      body.bouncing = false;
             // emit all of these to all users
             //io.emit('positionUpdate', voxelPos);
     };
@@ -636,6 +640,9 @@ let connected = (socket) => {
         console.log("Room is empty and will hopefully delete itself");
       }
   })
+  socket.on('forceDisconnect', function () {
+    socket.disconnect();
+  })
   socket.on('userCommands', data => {
     let roomPLAYERS = PLAYERS[data.roomName]
       for (let id in roomPLAYERS)
@@ -656,6 +663,9 @@ const SocketHandler = (req, res) => {
     console.log("*First use, so starting server");
     io = new Server(res.socket.server);
     res.socket.server.io = io;
+    io.on('connection', (socket) => {
+      connected(socket);
+    });
   }
   else {
     io = res.socket.server.io;
@@ -663,9 +673,6 @@ const SocketHandler = (req, res) => {
 
   //let selfID = "id of the emitting client";
   
-  io.on('connection', (socket) => {
-    connected(socket);
-  });
   if (!server_loop)
     server_loop = setInterval(serverLoop, 1000/120);
   //120 frames per second's worth of info being delivered to client

@@ -82,3 +82,45 @@ canvas {
     transform: scale(1.5);
   }
 }
+
+.fadeResults {
+  opacity: 0;
+  background-color: black;
+  animation-duration: 1.4s;
+  animation-name: fadeIn;
+  animation-fill-mode: forwards;
+}
+
+.fadeTable {
+  opacity: 0;
+  animation-duration: 1s;
+  animation-name: fadeIn;
+  animation-delay: 1.4s;
+  animation-fill-mode: forwards;
+}
+
+#results-table {
+  background-color: rgba(125, 249, 255,0.3);
+}
+#results-table > tbody > * {
+  padding: 5px;
+  border-color: white;
+  border-width: 2px;
+}
+#results-table > thead > * > * {
+  padding: 10px;
+  border-color: white;
+  border-width: 2px;
+}
+
+
+@keyframes fadeIn {
+  from {
+    margin-right: 0%;
+    opacity: 0;
+  }
+  to {
+    margin-right: 100%;
+    opacity: 1;
+  }
+}

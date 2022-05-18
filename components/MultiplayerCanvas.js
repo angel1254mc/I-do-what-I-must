@@ -2,6 +2,7 @@
 import React from 'react';
 import Results from './Results';
 import io from 'socket.io-client'
+import { regExName, regExRoom } from './tools/RegEx';
 import { useEffect } from 'react';
 
 // /https://stackoverflow.com/questions/57512366/how-to-use-socket-io-with-next-js-api-routes
@@ -19,7 +20,11 @@ let ROOMPROPS;
 let gameStateOuter = "Choosing";
 let playerStateOuter = "Inactive";
 let finalResults; //This will be populated when the game ends, and depopulated when the user goes to the main menu
-
+const sounds = {
+    bounce: new Howl({
+      src: ['/static/bouncemp3.mp3'],
+    })
+  }
 
 
 const SimpleVoxel = function(x, y, size, id, viewportY) {
@@ -28,6 +33,7 @@ const SimpleVoxel = function(x, y, size, id, viewportY) {
     this.y = y;
     this.size = size;
     this.viewportY = viewportY;
+    this.bouncing = false;
     this.color = "pink";
 }
 SimpleVoxel.prototype = {
@@ -171,10 +177,12 @@ const renderLoop = () => {
     }
     for (let id in voxelList)
     {
+        if (voxelList[id].bouncing)
+            sounds.bounce.play();
         voxelList[id].draw(ctx, 0, myVoxel.viewportY);
     }
 }
-let MultiplayerCanvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartGame, gameType, wonGame, setWonGame, startTimer, gameScore, setGameScore}) => {
+let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame}) => {
 
      //denotes the socket that connects the client to the server
     let justPressed; // has to do with sending user input
@@ -188,6 +196,9 @@ let MultiplayerCanvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartG
     let [playerName, setPlayerName] = React.useState("Default");
     let [roomName, setRoomName] = React.useState("");
     let [gameState, setGameState] = React.useState("Choosing");
+    let [nameValidMsg, setNameValidMsg] = React.useState("");
+    let [roomValidMsg, setRoomValidMsg] = React.useState("");
+
     /** Denotes the state of the game at the global state.
      *  Handled by both the client and the server.
      *  1. Creating = For creating a lobby. Socket connects to server but does nothing
@@ -218,13 +229,23 @@ let MultiplayerCanvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartG
 
     let handleJoinGame = (e) => {
         e.preventDefault();
-        socket.emit("join-room", {roomName: roomName, playerName: playerName });
-        gameStateOuter = "Waiting";
+        let nameInputValid = regExName(playerName);
+        let roomInputValid = regExRoom(roomName);
+        if (nameInputValid && roomInputValid)
+        {
+            socket.emit("join-room", {roomName: roomName, playerName: playerName });
+            gameStateOuter = "Waiting";
+        }
     }
     let handleCreateGame = (e) => {
         e.preventDefault();
-        socket.emit("create-room", {roomName: roomName, playerName: playerName});
-        gameStateOuter = "Creating"
+        let nameInputValid = regExName(playerName);
+        let roomInputValid = regExRoom(roomName);
+        if (nameInputValid && roomInputValid)
+        {
+            socket.emit("create-room", {roomName: roomName, playerName: playerName});
+            gameStateOuter = "Creating";
+        }
     }
     let handleBuildGame = (e) => {
         e.preventDefault();
@@ -235,6 +256,33 @@ let MultiplayerCanvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartG
         e.preventDefault();
         socket.emit("start-game", roomName);
         gameStateOuter = "Playing";
+    }
+    let handleNameInput = (value) => {
+        if (!regExName(value))
+        {
+            console.log(regExName(value));
+            setNameValidMsg("Invalid Name: Name must be 1-15 char long and contain no special characters");
+        }
+        else
+            setNameValidMsg("");
+        setPlayerName(value);
+    }
+    let handleRoomInput = (value) => {
+        if (!regExRoom(value))
+            setRoomValidMsg("Invalid Room: Room must be a combination of numbers of up to 4 digits");
+        else
+            setRoomValidMsg("");
+        setRoomName(value);
+    }
+    let handleForceDisconnect = () => {
+        setGameMode("Singleplayer"); 
+        setStartGame(false);
+        socket.disconnect();
+        socket.removeAllListeners(); //Removes all listeners
+        socketCreated = false;
+        blocks = [];
+        finalResults = null;
+        voxelList = {};
     }
 //Event listeners for the arrow keys
 function userInput(obj){
@@ -287,21 +335,27 @@ useEffect(( )=> {
     //establish event listeners
     userInput(keys_object);
     return function socketUnsub() {
-        let listeners = ['host-started', 'invalidLobby', 'created-room', 'builtGame', 'renderUpdate', 'playerStateUpdate', "gameOver"]
-        socket.removeAllListeners();
+        //let listeners = ['host-started', 'invalidLobby', 'created-room', 'builtGame', 'renderUpdate', 'playerStateUpdate', "gameOver"]
+        //socket.removeAllListeners();
     }
-}, [])
+}, [gameMode])
 
 const socketInitializer = async () => {
-    if (!socket)
     fetch('/api/socket').finally(() => {
+        console.log("Attempting to connect")
         socketCreated = true;
-        socket = io();
+        if(!socket)
+        {
+            socket = io();
+        }
+        else if (!socket.connected)
+        {
+            socket.connect();
+        }
         socket.on('connect', () => {
             ID = socket.id;
             setGameState("Choosing");
         })
-
         socket.on('host-started', () => {
             ROOMPROPS.renderLoop = "Visible";
             setGameState("Playing");
@@ -340,6 +394,7 @@ const socketInitializer = async () => {
                     voxelList[id].x = voxel.x;
                     voxelList[id].y = voxel.y;
                     voxelList[id].viewportY = voxel.viewportY;
+                    voxelList[id].bouncing = voxel.bouncing;
                 }
                 playerExists[id] = true;
             }
@@ -353,9 +408,7 @@ const socketInitializer = async () => {
             socket.emit("receivedInitialData", ROOMPROPS.roomName);
             setGameState("Waiting");
         })
-
         socket.on('renderUpdate', data => {
-            console.log(gameState);
             let playerExists = {}
             let voxelPos = data.voxelPos;
             for (let id in voxelPos)
@@ -373,6 +426,7 @@ const socketInitializer = async () => {
                     voxelList[id].x = voxel.x;
                     voxelList[id].y = voxel.y;
                     voxelList[id].viewportY = voxel.viewportY;
+                    voxelList[id].bouncing = voxel.bouncing;
                 }
                 playerExists[id] = true;
             }
@@ -412,55 +466,11 @@ const socketInitializer = async () => {
             //Also, save the game-end data object locally in the component, in order to display it later
             finalResults = FINALDATASERVER;
             setGameState("Finished");
+            gameStateOuter = "Finished";
             setPlayerState("Inactive");
             //Then display the stuff, which should be handled by
         });
-        /** 
-        socket.on('positionUpdateGame', players => {
-            let playerExists = {};
-            for (let id in players)
-            {
-                let voxel = players[id];
-                if (!voxels[id])
-                    voxels[id] = new SimpleVoxel(voxel.x, voxel.y, canvas.width/12, voxel.id, voxel.viewportY);
-                else
-                {
-                    voxels[id].x = voxel.x;
-                    voxels[id].y = voxel.y;
-                    voxels[id].viewportY = voxel.viewportY;
-                }
-                if (id == ID)
-                {
-                    myVoxel = voxels[id];
-                    myVoxel.color = "blue";
-                }
-                if (id)
-                    playerExists[id] = true;
-            }
-            for (let id in voxels)
-            {
-                if(!playerExists[id]) {
-                    delete voxels[id];
-                }
-            }
-            renderLoop();
-        })
-        socket.on('initialSetupGame', data => {
-            let blocksPos = data.blocksPos;
-            let blockInfo;
-            for (let id in blocksPos)
-            {
-                blockInfo = blocksPos[id];
-                blocks.push(new SimpleBlock(blockInfo.x, blockInfo.y, canvas.width/10, blockInfo.item));
-            }
-        })
-        socket.on('gameOver', data => {
-            console.log("The winner's id is :", data.winner);
-            console.log(data.message);
-            //Player is now dead, cue the buttons and UI stuff
-            setPlayerState("Dead");
-        })
-        */
+        
         return null;
     })
 }
@@ -470,32 +480,34 @@ return (
     <div className = "w-[400px] h-[800px]">
         {gameState == "Choosing" ? <div className = "absolute w-full h-full flex flex-col items-center m-1">
           <div className = "relative text-center leader-lg text-5xl mt-[100px] text-white font-extrabold bg-main-leader">Multiplayer Options</div>
+          {roomValidMsg == "" ? "" : <div className = "mx-11 text-center text-lg text-red-700">{roomValidMsg}</div> }
+          {nameValidMsg == "" ? "" : <div className = "mx-11 text-center text-lg text-red-700">{nameValidMsg}</div> }
           <div className = "flex flex-col justify-center relative leader2-lg text-2xl mt-[20px] w-1/2 h-[80px] items-center text-white ">
             <form className="flex flex-row justify-around align-center">
                 <div className="text-xl">Display Name: </div>
-                <input className = "w-2/3  bg-transparent border-2 rounded-md border-black bg-slate-800 text-white" type="text" value={playerName} onChange={(e) => {setPlayerName(e.target.value)}}/>
+                <input className = "w-2/3  bg-transparent border-2 rounded-md border-black bg-slate-800 text-white" type="text" value={playerName} onChange={(e) => {handleNameInput(e.target.value)}}/>
             </form>
           </div>
           <div className = "flex flex-col justify-center relative leader2-lg text-2xl mt-[20px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
             <form className="flex flex-row justify-center align-center">
                 <button className="h-[40px] w-1/2 mr-[10px]" type="submit" onClick={(e) => {handleJoinGame(e)}}>Join Game</button>
-                <input className = "w-1/3  bg-transparent border-2 rounded-md border-black text-white" type="text" value={roomName} onChange={(e) => {setRoomName(e.target.value)}}/>
+                <input className = "w-1/3  bg-transparent border-2 rounded-md border-black text-white" type="text" value={roomName} onChange={(e) => {handleRoomInput(e.target.value)}}/>
             </form>
           </div>
           <div className = "flex flex-col justify-center relative leader2-lg text-2xl mt-[20px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
             <form className="flex flex-row justify-center align-center">
                 <button className="h-[40px] w-1/2 mr-[10px]" type="submit" onClick={(e) => {handleCreateGame(e)}}>Create Game</button>
-                <input className= "w-1/3 bg-transparent border-2 rounded-md border-black text-white" type="text" value={roomName} onChange={(e) => {setRoomName(e.target.value)}}/>
+                <input className= "w-1/3 bg-transparent border-2 rounded-md border-black text-white" type="text" value={roomName} onChange={(e) => {handleRoomInput(e.target.value)}}/>
             </form>
           </div>
-          <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button "><button className="h-full w-1/2" onClick={() => {}}>Back to Menu</button></div>
+          <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button "><button className="h-full w-1/2" type="submit" onClick={() => {handleForceDisconnect() }}>Back to Menu</button></div>
         </div> : <div></div>}
         {gameState == "Creating" ? <div className = "absolute w-full h-full flex flex-col items-center m-1">
           <div className = "relative text-center leader-lg text-6xl mt-[100px] text-white font-extrabold bg-main-leader">Options Coming Soon!</div>
           <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
             <button className="h-full w-1/2" onClick={(e) => {handleBuildGame(e)}}>Create Game</button>
           </div>
-          <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button "><button className="h-full w-1/2" onClick={() => {console.log("Return to main menu")}}>Back to Menu</button></div>
+          <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button "><button className="h-full w-1/2" type="submit" onClick={() => {handleForceDisconnect() }}>Back to Menu</button></div>
         </div> : <div></div>}
         {gameState == "Waiting" ? <div className = "absolute w-full h-full flex flex-col items-center m-1">
           <div className = "flex justify-center relative leader2-lg text-3xl mt-[50px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
@@ -518,7 +530,16 @@ return (
             : 
             <div></div>
         }
-        { gameState == "Finished" ? <Results finalResults = {finalResults}></Results> : <div></div> }
+        { gameState == "Finished" ? 
+        <div className = "fadeResults">
+            <Results finalResults = {finalResults}></Results>
+            <div className = "absolute w-full h-full flex flex-col items-center m-1">
+                <div className = "flex justify-center relative leader2-lg text-3xl mt-[50px] w-2/3 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
+                    <button className="h-full w-1/2" onClick={(e) => {handleForceDisconnect()}}>Back to Main Menu</button>
+                </div>
+            </div>
+        </div>
+        : <div></div> }
       <div id= "canvas-holder-game">
       </div>
     </div>
