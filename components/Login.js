@@ -17,26 +17,14 @@ const Login = ({user, loading, error, signInWithGithub, dbSaveImage}) => {
         console.log("User Object: ", user, " and User UID: ", user.uid);
     }, [user, loading, error])
 
-    if (loading) {
-        return (
-          <div>
-            <p>Initialising User...</p>
-          </div>
-        );
-      }
-      if (error) {
-        return (
-          <div>
-            <p>Error: {error}</p>
-          </div>
-        );
-      }
       if (user) {
         dbSaveImage(user.user.photoURL, user.user.reloadUserInfo.screenName)
         return (
+          /**
           <div className = "flex flex-col justify-content">
             <div className = "flex justify-start relative leader2-lg text-2xl mt-[30px] w-2/3 h-[80px] items-end pb-1 text-white border-b-4 border-black ">Hello {user.user.reloadUserInfo.screenName}!</div>
           </div>
+          */<div></div>
         );
       }
     return (
