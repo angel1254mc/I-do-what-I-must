@@ -4,7 +4,8 @@ import Results from './Results';
 import io from 'socket.io-client'
 import { regExName, regExRoom } from './tools/RegEx';
 import { useEffect } from 'react';
-
+import {firebaseApp, db} from "../firebaseConfig";
+import { doc, getDoc } from 'firebase/firestore';
 // /https://stackoverflow.com/questions/57512366/how-to-use-socket-io-with-next-js-api-routes
 let ctx;
 let canvas;
@@ -17,6 +18,7 @@ let socket;
 let socketCreated = false;
 let ID;
 let ROOMPROPS;
+let VOXELTOIMG = {"notlogged": null}; //Maps voxel id to an image url;
 let gameStateOuter = "Choosing";
 let playerStateOuter = "Inactive";
 let finalResults; //This will be populated when the game ends, and depopulated when the user goes to the main menu
@@ -25,9 +27,16 @@ const sounds = {
       src: ['/static/bouncemp3.mp3'],
     })
   }
+async function setImage(accountID, voxel) {
+    await getDoc(doc(db, "images", accountID)).then((docSnap) => {
+        if (docSnap.exists())
+        {
+            voxel.image.src = docSnap.data().imgurl;
+        }
+    });
+}
 
-
-const SimpleVoxel = function(x, y, size, id, viewportY) {
+const SimpleVoxel = function(x, y, size, id, viewportY, accountID) {
     this.id = id;
     this.x = x;
     this.y = y;
@@ -35,11 +44,28 @@ const SimpleVoxel = function(x, y, size, id, viewportY) {
     this.viewportY = viewportY;
     this.bouncing = false;
     this.color = "pink";
+    this.imageready = false;
+    this.image = new Image();
+    this.image.onload = (function(voxel) {
+        return function () {
+            voxel.imageready = true;
+        };
+    })(this);
+    if (accountID != "notlogged" && accountID)
+    {
+        setImage(accountID, this);
+    }
 }
 SimpleVoxel.prototype = {
     draw: function (ctx, viewportX, viewportY) {
         ctx.save();
-        ctx.translate(this.x + viewportX, this.y + viewportY);;
+        ctx.translate(this.x + viewportX, this.y + viewportY);
+        if (this.imageready)
+        {
+            ctx.drawImage(this.image, -this.size/2, 0, this.size, this.size);
+            ctx.restore();
+            return;
+        }
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(0, 0);
@@ -182,7 +208,7 @@ const renderLoop = () => {
         voxelList[id].draw(ctx, 0, myVoxel.viewportY);
     }
 }
-let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame}) => {
+let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame, accountID}) => {
 
      //denotes the socket that connects the client to the server
     let justPressed; // has to do with sending user input
@@ -233,7 +259,7 @@ let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame}) => {
         let roomInputValid = regExRoom(roomName);
         if (nameInputValid && roomInputValid)
         {
-            socket.emit("join-room", {roomName: roomName, playerName: playerName });
+            socket.emit("join-room", {roomName: roomName, playerName: playerName, accountID: accountID });
             gameStateOuter = "Waiting";
         }
     }
@@ -243,7 +269,7 @@ let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame}) => {
         let roomInputValid = regExRoom(roomName);
         if (nameInputValid && roomInputValid)
         {
-            socket.emit("create-room", {roomName: roomName, playerName: playerName});
+            socket.emit("create-room", {roomName: roomName, playerName: playerName,  accountID: accountID });
             gameStateOuter = "Creating";
         }
     }
@@ -260,7 +286,6 @@ let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame}) => {
     let handleNameInput = (value) => {
         if (!regExName(value))
         {
-            console.log(regExName(value));
             setNameValidMsg("Invalid Name: Name must be 1-15 char long and contain no special characters");
         }
         else
@@ -342,7 +367,6 @@ useEffect(( )=> {
 
 const socketInitializer = async () => {
     fetch('/api/socket').finally(() => {
-        console.log("Attempting to connect")
         socketCreated = true;
         if(!socket)
         {
@@ -361,7 +385,6 @@ const socketInitializer = async () => {
             setGameState("Playing");
         })
         socket.on('invalidLobby', (message)=> {
-            console.log("Invalid Lobby: ", message );
         })
         socket.on('created-room', roomprops => {
             ROOMPROPS = roomprops;
@@ -369,25 +392,22 @@ const socketInitializer = async () => {
         })
         socket.on('builtGame', data => {
             ROOMPROPS = data.roomprops;
-            console.log(ROOMPROPS);
             let playerExists = {}
             let blocksPos = data.blocksPos;
             blocksPos.forEach((box) => {
                 blocks.push(new SimpleBlock(box.x, box.y, canvas.width/10, box.item));
             })
-            console.log(blocksPos);
-            console.log(data);
             let voxelPos = data.voxelPos;
-            console.log(voxelPos);
             for (let id in voxelPos)
             {
                 let voxel = voxelPos[id];
                 if (!voxelList[id])
                 {
-                    voxelList[id] = new SimpleVoxel(voxel.x, voxel.y, canvas.width/12, voxel.id, voxel.viewportY);
+                    voxelList[id] = new SimpleVoxel(voxel.x, voxel.y, canvas.width/12, voxel.id, voxel.viewportY, voxel.accountID);
                     //Check if this voxel is ourselves, if so, set it myVoxel equal to it
                     if (id == ID)
                         myVoxel = voxelList[id];
+                    
                 }
                 else
                 {
@@ -416,7 +436,8 @@ const socketInitializer = async () => {
                 let voxel = voxelPos[id];
                 if (!voxelList[id])
                 {
-                    voxelList[id] = new SimpleVoxel(voxel.x, voxel.y, canvas.width/12, voxel.id, voxel.viewportY);
+                    
+                    voxelList[id] = new SimpleVoxel(voxel.x, voxel.y, canvas.width/12, voxel.id, voxel.viewportY, voxel.accountID);
                     //Check if this voxel is ourselves, if so, set it myVoxel equal to it
                     if (id == ID)
                         myVoxel = voxelList[id];

@@ -403,7 +403,8 @@ const sendRender = (roomName) => {
         y: body.y,
         id: body.id,
         bouncing: body.bouncing,
-        viewportY: body.viewportY
+        viewportY: body.viewportY,
+        accountID: SOCKETTONAME[id],
       }
       body.bouncing = false;
             // emit all of these to all users
@@ -449,7 +450,7 @@ let MAPENTITIES = {};
 let ROOMPROPS = {};
 let PLAYERENDDATA = {};
 let WINNERS = {};
-let SOCKETTONAME = {};
+let SOCKETTONAME = {}; //Stores the account name of the player;
 let server_loop; //Stores the global server loop
 const playerRoomMap = new Map();
 
@@ -483,7 +484,7 @@ let connected = (socket) => {
   console.log("Player with id: \'", socket.id, "\' connected to server!");
   //socket.to(socket.id).emit('updateState', stateUpdate);
 
-  socket.on("create-room", ({roomName, playerName}) => {
+  socket.on("create-room", ({roomName, playerName, accountID}) => {
     if (io.sockets.adapter.rooms.has(roomName) && ROOMPROPS[roomName])
     {
       //The room exists, cant create it
@@ -493,7 +494,7 @@ let connected = (socket) => {
     {
       socket.join(roomName);
       playerRoomMap[socket.id] = roomName;
-      SOCKETTONAME[socket.id] = playerName;
+      SOCKETTONAME[socket.id] = accountID;
       //Establishing room properties that establish whether a render cycle is necessary, mapsize, if its joinable
       ROOMPROPS[roomName] = {
         id: roomName,
@@ -516,7 +517,7 @@ let connected = (socket) => {
       io.to(roomName).emit("created-room", ROOMPROPS);
     }
   })
-  socket.on("join-room", ({roomName, playerName}) => {
+  socket.on("join-room", ({roomName, playerName, accountID}) => {
     if (io.sockets.adapter.rooms.has(roomName) && !PLAYERS[roomName][socket.id])
     {
       //The room exists, continue
@@ -524,7 +525,7 @@ let connected = (socket) => {
       {
         socket.join(roomName);
         playerRoomMap[socket.id] = roomName;
-        SOCKETTONAME[socket.id] = playerName;
+        SOCKETTONAME[socket.id] = accountID;
         //Updating Room properties
         ROOMPROPS[roomName].players = ROOMPROPS[roomName].players + 1;
         PLAYERS[roomName][socket.id] = new Voxel (
@@ -583,7 +584,8 @@ let connected = (socket) => {
         x: canvas.width/2, 
         y: map.height - canvas.height/2, 
         id: socket.id, 
-        viewportY: PLAYERS[roomName][socket.id].viewportY
+        viewportY: PLAYERS[roomName][socket.id].viewportY,
+        accountID: SOCKETTONAME[socket.id],
       };
       ROOMPROPS[roomName].joinable = 1;
       ROOMPROPS[roomName].roomState = "Waiting";
@@ -628,6 +630,7 @@ let connected = (socket) => {
       console.log("Player ", socket.id, " has left room ", roomName)
       delete PLAYERS[roomName][socket.id]
       delete voxelPos[roomName][socket.id];
+      delete SOCKETTONAME[socket.id];
       if (PLAYERENDDATA[roomName])
         delete PLAYERENDDATA[roomName][socket.id]
       if (Object.keys(voxelPos[roomName]).length === 0)
@@ -674,7 +677,7 @@ const SocketHandler = (req, res) => {
   //let selfID = "id of the emitting client";
   
   if (!server_loop)
-    server_loop = setInterval(serverLoop, 1000/120);
+    server_loop = setInterval(serverLoop, 1000/60);
   //120 frames per second's worth of info being delivered to client
   res.end();
   

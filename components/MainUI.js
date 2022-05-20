@@ -58,8 +58,8 @@ export default function MainUI({signInWithGithub, user, loading, error, dbSaveIm
           <div className = "flex justify-center relative leader2-lg text-3xl mt-[150px] w-1/2 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button-win "><button className="h-full w-full" onClick={() => {setStartGame(false); setRetry(false); setWonGame(false)}}>Back to Menu</button></div>
         </div>  : <div></div>}
         {startGame && gameMode == "Singleplayer" ? <div className = "absolute flex p-4 text-center justify-center items-center width-[50px] text-3xl h-[50px] text-white">{gameScore}</div> : 'no'}
-        {startGame && gameMode == "Singleplayer" ? <Canvas gameOn = {startGame} gameOnHandler = {setStartGame} lostGame ={lostGame} setLostGame = {setLostGame} gameType = {gameType} wonGame = {wonGame} setWonGame = {setWonGame} gameScore = {gameScore} setGameScore = {setGameScore}></Canvas> 
-        : (startGame && gameMode == "Multiplayer") ? <MultiplayerCanvas gameMode = {gameMode} setGameMode = {setGameMode} startGame = {startGame} setStartGame = {setStartGame}></MultiplayerCanvas>
+        {startGame && gameMode == "Singleplayer" ? <Canvas gameOn = {startGame} gameOnHandler = {setStartGame} lostGame ={lostGame} setLostGame = {setLostGame} gameType = {gameType} wonGame = {wonGame} setWonGame = {setWonGame} gameScore = {gameScore} setGameScore = {setGameScore} ></Canvas> 
+        : (startGame && gameMode == "Multiplayer") ? <MultiplayerCanvas gameMode = {gameMode} setGameMode = {setGameMode} startGame = {startGame} setStartGame = {setStartGame} accountID = {user ? user.user.reloadUserInfo.screenName : "notlogged"}></MultiplayerCanvas>
         : <BackgroundCanvas startGame = {startGame} restartGame={retry} ></BackgroundCanvas>}
         <Image id="rocket" className ="absolute" width="0px" height="0px" src="/static/rocket.png" priority></Image>
         <Image id="spring" className ="absolute" width="0px" height="0px" src="/static/spring.png" priority></Image>
