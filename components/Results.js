@@ -78,7 +78,7 @@ const Results = ({finalResults}) => {
                                 <tr key= {index}>
                                     <td className = "py-10" scope = "row">{index+1}</td>
                                     <td className= "py-10 text-amber-500">{winner}</td>
-                                    <td className = "py-10">"Image Here"</td>
+                                    <td className = "py-10">Image Here</td>
                                 </tr>
                             )
                         }) 
@@ -90,7 +90,7 @@ const Results = ({finalResults}) => {
                                 <tr key= {index}>
                                     <td className = "py-10" scope = "row">{"DNF"}</td>
                                     <td className= "py-10 text-amber-500">{loser}</td>
-                                    <td className = "py-10">"Image Here"</td>
+                                    <td className = "py-10">Image Here</td>
                                 </tr>
                             )
                         }) 
