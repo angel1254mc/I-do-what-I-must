@@ -1,8 +1,7 @@
 import { app, database } from '../firebaseConfig';
-import {Voxel, Box, buildGameWorld, startGame} from '../pages/api/game'
 import React from 'react';
 import { isReactNative } from '@firebase/util';
-
+import {Howl, Howler} from 'howler';
 
 let Canvas = ({gameOn ,gameOnHandler, lostGame, setLostGame, restartGame, gameType, wonGame, setWonGame, startTimer, gameScore, setGameScore}) => {
     //Game Functionality holders, later passed to game API
@@ -13,6 +12,11 @@ let ref;
 let interval;
 let spring;
 let rocket; 
+const sounds = {
+  bounce: new Howl({
+    src: ['/bouncemp3.mp3'],
+  })
+}
 
 const getRandImageType = () => {
   let rand = getRandomBetween(1, 100);
@@ -32,7 +36,6 @@ const getRandImageType = () => {
 const updateScore = (voxel) => {
     
     voxel.score += Math.round(Math.ceil(-voxel.vy)/10 );
-    console.log(voxel.score);
     if (voxel.score > gameScore + 20)
       setGameScore(voxel.score);
 }
@@ -182,12 +185,13 @@ const Voxel = function (x, y, angle, size, color, map) {
   };
   Voxel.prototype = {
     accelerate: function (direction) {
-      this.ax += this.accelerationAmount * direction;
+      this.ax += 2.5*this.accelerationAmount * direction;
     },
     bounce: function (multiplier) {
       if (this.vy > 0)
       {
-        this.vy = multiplier*-10.8;
+        this.vy = multiplier*-2*10.8;
+        sounds.bounce.play();
       }
     },
     move: function () {
@@ -202,7 +206,7 @@ const Voxel = function (x, y, angle, size, color, map) {
       this.y += this.vy;
       this.maxy = this.miny + canvas.height/2
       this.ax *= this.friction;
-      this.ay = 0.1;
+      this.ay = 4*0.1;
       this.vx *= this.friction;
       this.rv *= this.friction;
       this.stepcollisionzone =  {
@@ -415,13 +419,13 @@ const Voxel = function (x, y, angle, size, color, map) {
     rocket = document.getElementById("rocket");
     if (gameOn == 1)
     {
+      setGameScore(0);
       buildGameWorld();
       startGame();
       setLostGame(false);
     }
     },[restartGame])
   React.useEffect(() => {
-    
     spring = document.getElementById("spring");
     rocket = document.getElementById("rocket");
     if (gameType == "Race")
