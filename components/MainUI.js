@@ -61,8 +61,8 @@ export default function MainUI({signInWithGithub, user, loading, error, dbSaveIm
         {startGame && gameMode == "Singleplayer" ? <Canvas gameOn = {startGame} gameOnHandler = {setStartGame} lostGame ={lostGame} setLostGame = {setLostGame} gameType = {gameType} wonGame = {wonGame} setWonGame = {setWonGame} gameScore = {gameScore} setGameScore = {setGameScore} ></Canvas> 
         : (startGame && gameMode == "Multiplayer") ? <MultiplayerCanvas gameMode = {gameMode} setGameMode = {setGameMode} startGame = {startGame} setStartGame = {setStartGame} accountID = {user ? user.user.reloadUserInfo.screenName : "notlogged"}></MultiplayerCanvas>
         : <BackgroundCanvas startGame = {startGame} restartGame={retry} ></BackgroundCanvas>}
-        <Image id="rocket" className ="absolute" width="0px" height="0px" src="/static/rocket.png" priority></Image>
-        <Image id="spring" className ="absolute" width="0px" height="0px" src="/static/spring.png" priority></Image>
+        <Image id="rocket" className ="absolute" width="0px" height="0px" src="/rocket.png" priority></Image>
+        <Image id="spring" className ="absolute" width="0px" height="0px" src="/spring.png" priority></Image>
         </div>
       </main>
     </div>

@@ -14,7 +14,7 @@ let spring;
 let rocket; 
 const sounds = {
   bounce: new Howl({
-    src: ['/static/bouncemp3.mp3'],
+    src: ['/bouncemp3.mp3'],
   })
 }
 
