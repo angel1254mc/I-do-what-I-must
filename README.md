@@ -14,7 +14,7 @@
     <img src="https://i.imgur.com/X72H6zr.png" alt="Logo" width="150" height="150">
   </a>
 
-<h3 align="center">Voxel Jump!</h3>
+  <h3 align="center"><a href="https://voxel-jump.herokuapp.com"/>Voxel Jump!</a></h3>
 
   <p align="center">
     A small HTML Canvas Singleplayer/Multiplayer game largely based on the IOS hit Doodle Jump by Lima Sky LLC!
