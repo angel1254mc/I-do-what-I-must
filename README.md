@@ -28,20 +28,12 @@
 </div>
 Voxel Jump is functionally a recreation of Doodle Jump on HTML Canvas, with support for multiplayer with anywhere from 2 to 20 players in one game! You can sign in with github to have your voxel carry your Github Avatar, and compete against your friends in a race mode where you battle it out to get to the finish line first.
 
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
-
 ### Built With
 
 * [Next.js](https://nextjs.org/)
 * [React.js](https://reactjs.org/)
 * [Firebase](https://firebase.google.com/)
 * [Socket.IO](https://socket.io/)
-
-<p align="right">(<a href="#top">back to top</a>)</p>
-
-
 
 <!-- GETTING STARTED -->
 ## Getting Started / Installation
@@ -66,7 +58,7 @@ If the build works fine, you can go ahead and deploy it on any service that supp
 <!-- ROADMAP -->
 ## Roadmap
 All of the proposed features and known bugs that need fixing can be found on [open issues](https://github.com/angel1254mc/I-do-what-I-must/issues?q=is%3Aopen)
-<p align="right">(<a href="#top">back to top</a>)</p>
+
 
 <!-- CONTRIBUTING -->
 ## Contributing
@@ -79,7 +71,6 @@ Right now its just me working on this, but if you'd like to contribute anything 
 4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request to the main branch (or better, the develop branch) with a short description, and I'll check it out and approve it.
 
-<p align="right">(<a href="#top">back to top</a>)</p>
 
 <!-- LICENSE -->
 ## License
