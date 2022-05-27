@@ -19,12 +19,13 @@ const Login = ({user, loading, error, signInWithGithub, dbSaveImage}) => {
 
       if (user) {
         dbSaveImage(user.user.photoURL, user.user.reloadUserInfo.screenName)
+        console.log(user);
         return (
-          /**
+          
           <div className = "flex flex-col justify-content">
-            <div className = "flex justify-start relative leader2-lg text-2xl mt-[30px] w-2/3 h-[80px] items-end pb-1 text-white border-b-4 border-black ">Hello {user.user.reloadUserInfo.screenName}!</div>
+            <div className = "flex justify-start relative leader2-lg text-2xl mt-[30px] w-2/3 h-[80px] items-end pb-1 text-white border-b-4 border-black ">Hello {user ? user.user.reloadUserInfo.screenName : "Anonymous"}!</div>
           </div>
-          */<div></div>
+          //<div></div>
         );
       }
     return (
