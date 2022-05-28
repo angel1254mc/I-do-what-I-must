@@ -462,19 +462,17 @@ const socketInitializer = async () => {
         socket.on('playerStateUpdate', PLAYERENDDATA => {
             if (gameStateOuter == "Playing")
             {
-                if (PLAYERENDDATA.id == myVoxel.id)
-                {
-                    delete voxelList[ID]; 
-                    //Get the first random
-                    myVoxel = voxelList[Object.keys(voxelList)[1]]
-                }
-                if (PLAYERENDDATA.outcome == "won")
+                
+                if (PLAYERENDDATA.outcome == "won" && PLAYERENDDATA.id == myVoxel.id)
                 {
                     setPlayerState("Won");
                     playerStateOuter = "Won";
                 }
-                else if (PLAYERENDDATA.outcome == "lost")
+                else if (PLAYERENDDATA.outcome == "lost" && PLAYERENDDATA.id == myVoxel.id)
                 {
+                    delete voxelList[ID]; 
+                    //Get the first random
+                    myVoxel = voxelList[Object.keys(voxelList)[1]]
                     setPlayerState("Lost");
                     playerStateOuter = "Lost";
                 }
