@@ -1,34 +1,94 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+<div id="top"></div>
+<!-- PROJECT SHIELDS -->
+<!--
+*** I'm using markdown "reference style" links for readability.
+*** Reference links are enclosed in brackets [ ] instead of parentheses ( ).
+*** See the bottom of this document for the declaration of the reference variables
+*** for contributors-url, forks-url, etc. This is an optional, concise syntax you may use.
+*** https://www.markdownguide.org/basic-syntax/#reference-style-links
+-->
+<!-- PROJECT LOGO -->
+<br />
+<div align="center">
+  <a href="https://github.com/github_username/repo_name">
+    <img src="https://i.imgur.com/X72H6zr.png" alt="Logo" width="150" height="150">
+  </a>
 
-## Getting Started
+  <h3 align="center"><a href="https://voxel-jump.herokuapp.com"/>Voxel Jump!</a></h3>
 
-First, run the development server:
+  <p align="center">
+    A small HTML Canvas Singleplayer/Multiplayer game largely based on the IOS hit Doodle Jump by Lima Sky LLC!
+  </p>
+</div>
 
-```bash
-npm run dev
-# or
-yarn dev
+<!-- ABOUT THE PROJECT -->
+## About The Project
+<div align="center">
+   <img src="https://i.imgur.com/kJ7vFIU.png">
+</div>
+Voxel Jump is functionally a recreation of Doodle Jump on HTML Canvas, with support for multiplayer with anywhere from 2 to 20 players in one game! You can sign in with github to have your voxel carry your Github Avatar, and compete against your friends in a race mode where you battle it out to get to the finish line first.
+
+### Built With
+
+* [Next.js](https://nextjs.org/)
+* [React.js](https://reactjs.org/)
+* [Firebase](https://firebase.google.com/)
+* [Socket.IO](https://socket.io/)
+
+<!-- GETTING STARTED -->
+## Getting Started / Installation
+
+[You can play the prototype right now by clicking here](https://voxel-jump.herokuapp.com/)
+
+Or, you can run your own server for the game on Heroku!
+Like usual, clone the repository and install all the dependencies using npm
 ```
+git clone https://github.com/angel1254mc/I-do-what-I-must.git
+npm install
+```
+Then, change the firebaseConfig to your own Authentication and Firestore keys.
+To test it locally, you can run use the default NextJS scripts
+```
+npm run dev
+(or)
+npm run build
+```
+If the build works fine, you can go ahead and deploy it on any service that supports it. I've found heroku works great!
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+<!-- ROADMAP -->
+## Roadmap
+All of the proposed features and known bugs that need fixing can be found on [open issues](https://github.com/angel1254mc/I-do-what-I-must/issues?q=is%3Aopen)
 
-You can start editing the page by modifying `pages/index.js`. The page auto-updates as you edit the file.
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.js`.
+<!-- CONTRIBUTING -->
+## Contributing
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+Right now its just me working on this, but if you'd like to contribute anything to the game, then by all means! Here's the general guideline to contributing to the project:
 
-## Learn More
+1. Fork the Project
+2. Create a branch for your feature/contribution (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request to the main branch (or better, the develop branch) with a short description, and I'll check it out and approve it.
 
-To learn more about Next.js, take a look at the following resources:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+<!-- LICENSE -->
+## License
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+Distributed under the MIT License.
 
-## Deploy on Vercel
+<!-- CONTACT -->
+## Contact
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Angel Lopez Pol - angellopezpol1254@gmail.com
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+Project Link: [https://github.com/angel1254mc/I-do-what-I-must](https://github.com/angel1254mc/I-do-what-I-must)
+
+<!-- ACKNOWLEDGMENTS -->
+## Acknowledgments
+
+* [Gabriel Colon Lopez / Gabword69 (PoopStain1668)](https://github.com/PoopStain1668) for game feature ideas and playtesting
+* [Lillian Cheng](https://www.linkedin.com/in/lillian-cheng-4804280530/) for the initial game idea
+* [Martin Calderon](https://github.com/Therandommac), [Gabriel Colon](https://github.com/PoopStain1668), and Yariel Benitez Pacheco for playtesting
+
+<p align="right">(<a href="#top">back to top</a>)</p>
