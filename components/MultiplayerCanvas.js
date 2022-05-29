@@ -18,7 +18,7 @@ let socket;
 let socketCreated = false;
 let ID;
 let ROOMPROPS;
-let VOXELTOIMG = {"notlogged": null}; //Maps voxel id to an image url;
+let VOXELTOIMG = {"notlogged": "https://i.imgur.com/90ZdeHQ.jpg"}; //Maps voxel id to an image url;
 let gameStateOuter = "Choosing";
 let playerStateOuter = "Inactive";
 let finalResults; //This will be populated when the game ends, and depopulated when the user goes to the main menu
@@ -32,6 +32,7 @@ async function setImage(accountID, voxel) {
         if (docSnap.exists())
         {
             voxel.image.src = docSnap.data().imgurl;
+            VOXELTOIMG[accountID] = docSnap.data().imgurl;
         }
     });
 }
@@ -259,7 +260,7 @@ let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame, accoun
         let roomInputValid = regExRoom(roomName);
         if (nameInputValid && roomInputValid)
         {
-            socket.emit("join-room", {roomName: roomName, playerName: playerName, accountID: accountID });
+            socket.emit("join-room", {roomName: roomName, playerName: playerName, accountID: accountID, loggedIn: accountID == "notlogged" ? false : true});
             gameStateOuter = "Waiting";
         }
     }
@@ -269,13 +270,13 @@ let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame, accoun
         let roomInputValid = regExRoom(roomName);
         if (nameInputValid && roomInputValid)
         {
-            socket.emit("create-room", {roomName: roomName, playerName: playerName,  accountID: accountID });
+            socket.emit("create-room", {roomName: roomName, playerName: playerName,  accountID: accountID, loggedIn: accountID == "notlogged" ? false : true });
             gameStateOuter = "Creating";
         }
     }
     let handleBuildGame = (e) => {
         e.preventDefault();
-        socket.emit("build-game", roomName);
+        socket.emit("build-game", {roomName: roomName, playerName: playerName, loggedIn: accountID == "notlogged" ? false : true });
         gameStateOuter = "Waiting";
     }
     let handleStartGame = (e) => {
@@ -551,7 +552,7 @@ return (
         }
         { gameState == "Finished" ? 
         <div className = "fadeResults">
-            <Results finalResults = {finalResults}></Results>
+            <Results finalResults = {finalResults} accountIDToImage = {VOXELTOIMG}></Results>
             <div className = "absolute w-full h-full flex flex-col items-center m-1">
                 <div className = "flex justify-center relative leader2-lg text-3xl mt-[50px] w-2/3 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
                     <button className="h-full w-1/2" onClick={(e) => {handleForceDisconnect()}}>Back to Main Menu</button>
