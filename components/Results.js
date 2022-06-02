@@ -1,4 +1,5 @@
 import React from 'react';
+import {useEffect} from 'react';
 import Image from 'next/image';
 const fakeData = {
     "firstplace" : {
@@ -27,16 +28,16 @@ const fakeData = {
     }
 
 }
-const PlayerResults = ({playerid, playerdata, place}) => {
+const PlayerResults = ({playerid, playerdata, place, accountIDToImage}) => {
     return (
         <li className = "w-full h-[30px] flex justify-around">
             <div className ="text-lg text-white">{place}</div>
             <div className ="text-lg text-white">{playerid}</div>
-            <div className ="text-lg text-white">Image Here</div>
+            <div className ="text-lg text-white"><Image layout="responsive" src={accountIDToImage[playerid]}></Image></div>
         </li>
     )
 }
-const Results = ({finalResults}) => {
+const Results = ({finalResults, accountIDToImage}) => {
     let winners;
     let losers = [];
     let sortCorrectOrder = (initial) => {
@@ -54,7 +55,24 @@ const Results = ({finalResults}) => {
         console.log(winners);
     }
 
+    useEffect(() => {
+        
+        let result_rows = document.getElementsByClassName("results-row");
+        let amount = result_rows.length;
+        let interval;
+        let index = 0;
+        let addFadeIn = (amount, intervalID) => {
+            if (index == amount)
+                clearInterval(intervalID);
+            else
+            {
+                result_rows[index].classList.add("fade-in-row");
+                index++
+            }
 
+        }
+        interval = setInterval(addFadeIn, 500, amount, interval)
+    }, []);
 
   return (
     <div className = "absolute fadeResults m-1 h-full w-full overflow-x-hidden overflow-y-auto bg-black">
@@ -75,22 +93,22 @@ const Results = ({finalResults}) => {
                     {winners && winners.length > 0 ? 
                         winners.map((winner, index) => {
                             return (
-                                <tr key= {index}>
-                                    <td className = "py-10" scope = "row">{index+1}</td>
-                                    <td className= "py-10 text-amber-500">{winner}</td>
-                                    <td className = "py-10">Image Here</td>
+                                <tr className= "results-row" key= {index}>
+                                    <td className = "py-10 text-2xlw" scope = "row">{index+1}</td>
+                                    <td className= "py-5 text-xl text-amber-500">{winner.length > 12 ? winner.substring(0,11) + "..." : winner}</td>
+                                    <td align="center" className = ""><img width = "90vh" height= "90vh" src={accountIDToImage[winner] ? accountIDToImage[winner] : "https://i.imgur.com/90ZdeHQ.jpg"}></img></td>
                                 </tr>
                             )
                         }) 
-                        : <div className="text-4xl">Results Render Failed</div>
+                        : ""
                     }
                     {losers && losers.length > 0 ? 
                         losers.map((loser, index) => {
                             return (
-                                <tr key= {index}>
-                                    <td className = "py-10" scope = "row">{"DNF"}</td>
-                                    <td className= "py-10 text-amber-500">{loser}</td>
-                                    <td className = "py-10">Image Here</td>
+                                <tr className= "results-row" key= {index}>
+                                    <td className = "py-10 text-xl" scope = "row">{"DNF"}</td>
+                                    <td className= "py-5 text-xl text-amber-500">{loser.length > 12 ? loser.substring(0,11) + "..." : loser}</td>
+                                    <td align="center"><img width = "80vh" height= "80vh" src={accountIDToImage[loser] ? accountIDToImage[loser] : "https://i.imgur.com/90ZdeHQ.jpg"}></img></td>
                                 </tr>
                             )
                         }) 

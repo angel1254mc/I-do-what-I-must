@@ -333,7 +333,7 @@ const checkLoseCondition = (player, roomName) => {
         id: player.id, 
         name: SOCKETTONAME[player.id],
         outcome: "lost",
-        where: player.y
+        where: player.y,
       }
       //Data about players that won is sent to all players. Client is the one that decides what to do with it
       //If player that lost == client id, then client enters playerState "Dead", where UI appears and player 
@@ -484,7 +484,7 @@ let connected = (socket) => {
   console.log("Player with id: \'", socket.id, "\' connected to server!");
   //socket.to(socket.id).emit('updateState', stateUpdate);
 
-  socket.on("create-room", ({roomName, playerName, accountID}) => {
+  socket.on("create-room", ({roomName, playerName, accountID, loggedIn}) => {
     if (io.sockets.adapter.rooms.has(roomName) && ROOMPROPS[roomName])
     {
       //The room exists, cant create it
@@ -494,7 +494,7 @@ let connected = (socket) => {
     {
       socket.join(roomName);
       playerRoomMap[socket.id] = roomName;
-      SOCKETTONAME[socket.id] = accountID;
+      SOCKETTONAME[socket.id] =  loggedIn ? accountID : playerName;
       //Establishing room properties that establish whether a render cycle is necessary, mapsize, if its joinable
       ROOMPROPS[roomName] = {
         id: roomName,
@@ -517,7 +517,7 @@ let connected = (socket) => {
       io.to(roomName).emit("created-room", ROOMPROPS);
     }
   })
-  socket.on("join-room", ({roomName, playerName, accountID}) => {
+  socket.on("join-room", ({roomName, playerName, accountID, loggedIn}) => {
     if (io.sockets.adapter.rooms.has(roomName) && !PLAYERS[roomName][socket.id])
     {
       //The room exists, continue
@@ -525,7 +525,7 @@ let connected = (socket) => {
       {
         socket.join(roomName);
         playerRoomMap[socket.id] = roomName;
-        SOCKETTONAME[socket.id] = accountID;
+        SOCKETTONAME[socket.id] = loggedIn ? accountID : playerName;
         //Updating Room properties
         ROOMPROPS[roomName].players = ROOMPROPS[roomName].players + 1;
         PLAYERS[roomName][socket.id] = new Voxel (
@@ -565,7 +565,7 @@ let connected = (socket) => {
     }
   })
 
-  socket.on("build-game", roomName => {
+  socket.on("build-game", ({roomName, playerName, accountID, loggedIn}) => {
       //Create all platform
       if (MAPENTITIES[roomName].length == 0)
         buildGameWorld(MAPENTITIES[roomName]);
@@ -577,9 +577,8 @@ let connected = (socket) => {
         "white", 
         map, 
         canvas, 
-        socket.id
+        socket.id,
         );
-
       voxelPos[roomName][socket.id] =  {
         x: canvas.width/2, 
         y: map.height - canvas.height/2, 

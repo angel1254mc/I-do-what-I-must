@@ -10,6 +10,8 @@ import { doc, getDoc } from 'firebase/firestore';
 let ctx;
 let canvas;
 let map;
+let spring;
+let rocket; 
 let myVoxel;
 let blocks = [];
 const voxelList = {};
@@ -18,7 +20,7 @@ let socket;
 let socketCreated = false;
 let ID;
 let ROOMPROPS;
-let VOXELTOIMG = {"notlogged": null}; //Maps voxel id to an image url;
+let VOXELTOIMG = {"notlogged": "https://i.imgur.com/90ZdeHQ.jpg"}; //Maps voxel id to an image url;
 let gameStateOuter = "Choosing";
 let playerStateOuter = "Inactive";
 let finalResults; //This will be populated when the game ends, and depopulated when the user goes to the main menu
@@ -32,6 +34,7 @@ async function setImage(accountID, voxel) {
         if (docSnap.exists())
         {
             voxel.image.src = docSnap.data().imgurl;
+            VOXELTOIMG[accountID] = docSnap.data().imgurl;
         }
     });
 }
@@ -92,7 +95,7 @@ const SimpleBlock = function(x, y, size, item) {
     this.size = canvas.width/10;
     this.xsize = this.size;
     this.ysize = this.size/2;
-    this.item = new SimpleItem(x + size/2 - canvas.width/24, this.y + canvas.width/12, canvas.width/12);
+    this.item = new SimpleItem(this.x-25, this.y-50, item);
 }
 SimpleBlock.prototype = {
     draw: function (ctx, viewportX, viewportY) {
@@ -102,7 +105,6 @@ SimpleBlock.prototype = {
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.stroke();
-      ctx.fillStyle = "white";
       ctx.fillRect(
         this.xsize / -2, 
         this.ysize / -2, 
@@ -122,33 +124,20 @@ SimpleBlock.prototype = {
 }
 const SimpleItem = function (x, y, item) {
     this.x = x;
-    this.y = x;
+    this.y = y;
     this.size = canvas.width/12;
     this.itemType = item; 
+    console.log(this.itemType);
+    this.image = (item == "rocket") ? rocket : (item == "spring") ? spring : undefined;
 }
 SimpleItem.prototype = {
     draw: function (ctx, viewportX, viewportY) {
+    if (!this.image)
+        return; 
     ctx.save();
+    console.log(this.type);
     ctx.translate(this.x + viewportX, this.y + viewportY);
-    //Commenting out draw image to figure out images later
-    //ctx.drawImage(this.image,0,0,this.xsize, this.ysize);
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.stroke();
-      ctx.fillStyle = "white";
-      ctx.fillRect(
-        this.xsize / -2, 
-        this.ysize / -2, 
-        this.xsize, 
-        this.ysize
-      );
-      ctx.strokeRect(
-        this.xsize / -2, 
-        this.ysize / -2, 
-        this.xsize, 
-        this.ysize
-      );
+    ctx.drawImage(this.image,0,0,this.size, this.size);
     ctx.restore();
   },
 }
@@ -259,7 +248,7 @@ let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame, accoun
         let roomInputValid = regExRoom(roomName);
         if (nameInputValid && roomInputValid)
         {
-            socket.emit("join-room", {roomName: roomName, playerName: playerName, accountID: accountID });
+            socket.emit("join-room", {roomName: roomName, playerName: playerName, accountID: accountID, loggedIn: accountID == "notlogged" ? false : true});
             gameStateOuter = "Waiting";
         }
     }
@@ -269,13 +258,13 @@ let MultiplayerCanvas = ({gameMode, setGameMode, startGame, setStartGame, accoun
         let roomInputValid = regExRoom(roomName);
         if (nameInputValid && roomInputValid)
         {
-            socket.emit("create-room", {roomName: roomName, playerName: playerName,  accountID: accountID });
+            socket.emit("create-room", {roomName: roomName, playerName: playerName,  accountID: accountID, loggedIn: accountID == "notlogged" ? false : true });
             gameStateOuter = "Creating";
         }
     }
     let handleBuildGame = (e) => {
         e.preventDefault();
-        socket.emit("build-game", roomName);
+        socket.emit("build-game", {roomName: roomName, playerName: playerName, loggedIn: accountID == "notlogged" ? false : true });
         gameStateOuter = "Waiting";
     }
     let handleStartGame = (e) => {
@@ -351,7 +340,10 @@ function emitUserCommands(obj){
     if (gameStateOuter == "Waiting" || gameStateOuter == "Playing")
         socket.emit('userCommands', userCommands);
 }
-
+useEffect(( ) => {
+    spring = document.getElementById("spring");
+    rocket = document.getElementById("rocket");
+}, []);
 useEffect(( )=> {
     //Literally put the canvas on html
     buildCanvas();
@@ -551,7 +543,7 @@ return (
         }
         { gameState == "Finished" ? 
         <div className = "fadeResults">
-            <Results finalResults = {finalResults}></Results>
+            <Results finalResults = {finalResults} accountIDToImage = {VOXELTOIMG}></Results>
             <div className = "absolute w-full h-full flex flex-col items-center m-1">
                 <div className = "flex justify-center relative leader2-lg text-3xl mt-[50px] w-2/3 h-[80px] items-center text-white border-2 border-white rounded-3xl bg-main-button ">
                     <button className="h-full w-1/2" onClick={(e) => {handleForceDisconnect()}}>Back to Main Menu</button>

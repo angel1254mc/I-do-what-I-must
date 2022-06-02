@@ -86,8 +86,9 @@ canvas {
 .fadeResults {
   opacity: 0;
   background-color: black;
-  animation-duration: 1.4s;
+  animation-duration: 1s;
   animation-name: fadeIn;
+  animation-delay: 0s;
   animation-fill-mode: forwards;
 }
 
@@ -95,7 +96,7 @@ canvas {
   opacity: 0;
   animation-duration: 1s;
   animation-name: fadeIn;
-  animation-delay: 1.4s;
+  animation-delay: 0.5s;
   animation-fill-mode: forwards;
 }
 
@@ -123,4 +124,13 @@ canvas {
     margin-right: 100%;
     opacity: 1;
   }
+}
+.results-row {
+  opacity: 0;
+}
+.fade-in-row {
+  animation-duration: 0.5s;
+  animation-name: fadeIn;
+  animation-delay: 1.0s;
+  animation-fill-mode: forwards;
 }
