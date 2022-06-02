@@ -96,7 +96,7 @@ const Results = ({finalResults, accountIDToImage}) => {
                                 <tr className= "results-row" key= {index}>
                                     <td className = "py-10 text-2xlw" scope = "row">{index+1}</td>
                                     <td className= "py-5 text-xl text-amber-500">{winner.length > 12 ? winner.substring(0,11) + "..." : winner}</td>
-                                    <td className = ""><img width = "90vh" height= "90vh" src={accountIDToImage[winner] ? accountIDToImage[winner] : "https://i.imgur.com/90ZdeHQ.jpg"}></img></td>
+                                    <td align="center" className = ""><img width = "90vh" height= "90vh" src={accountIDToImage[winner] ? accountIDToImage[winner] : "https://i.imgur.com/90ZdeHQ.jpg"}></img></td>
                                 </tr>
                             )
                         }) 

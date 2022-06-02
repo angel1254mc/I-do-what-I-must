@@ -10,6 +10,8 @@ import { doc, getDoc } from 'firebase/firestore';
 let ctx;
 let canvas;
 let map;
+let spring;
+let rocket; 
 let myVoxel;
 let blocks = [];
 const voxelList = {};
@@ -93,7 +95,7 @@ const SimpleBlock = function(x, y, size, item) {
     this.size = canvas.width/10;
     this.xsize = this.size;
     this.ysize = this.size/2;
-    this.item = new SimpleItem(x + size/2 - canvas.width/24, this.y + canvas.width/12, canvas.width/12);
+    this.item = new SimpleItem(this.x-25, this.y-50, item);
 }
 SimpleBlock.prototype = {
     draw: function (ctx, viewportX, viewportY) {
@@ -103,7 +105,6 @@ SimpleBlock.prototype = {
       ctx.beginPath();
       ctx.moveTo(0, 0);
       ctx.stroke();
-      ctx.fillStyle = "white";
       ctx.fillRect(
         this.xsize / -2, 
         this.ysize / -2, 
@@ -123,33 +124,20 @@ SimpleBlock.prototype = {
 }
 const SimpleItem = function (x, y, item) {
     this.x = x;
-    this.y = x;
+    this.y = y;
     this.size = canvas.width/12;
     this.itemType = item; 
+    console.log(this.itemType);
+    this.image = (item == "rocket") ? rocket : (item == "spring") ? spring : undefined;
 }
 SimpleItem.prototype = {
     draw: function (ctx, viewportX, viewportY) {
+    if (!this.image)
+        return; 
     ctx.save();
+    console.log(this.type);
     ctx.translate(this.x + viewportX, this.y + viewportY);
-    //Commenting out draw image to figure out images later
-    //ctx.drawImage(this.image,0,0,this.xsize, this.ysize);
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.stroke();
-      ctx.fillStyle = "white";
-      ctx.fillRect(
-        this.xsize / -2, 
-        this.ysize / -2, 
-        this.xsize, 
-        this.ysize
-      );
-      ctx.strokeRect(
-        this.xsize / -2, 
-        this.ysize / -2, 
-        this.xsize, 
-        this.ysize
-      );
+    ctx.drawImage(this.image,0,0,this.size, this.size);
     ctx.restore();
   },
 }
@@ -352,7 +340,10 @@ function emitUserCommands(obj){
     if (gameStateOuter == "Waiting" || gameStateOuter == "Playing")
         socket.emit('userCommands', userCommands);
 }
-
+useEffect(( ) => {
+    spring = document.getElementById("spring");
+    rocket = document.getElementById("rocket");
+}, []);
 useEffect(( )=> {
     //Literally put the canvas on html
     buildCanvas();
